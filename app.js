@@ -37,8 +37,35 @@
     tail: 0xdde8ea,
     heart: 0xff8fa3,
     sparkle: 0xffd76a,
-    seed: 0xd8a253
+    seed: 0xd8a253,
+    eggShell: 0xfdf3e0,
+    eggSpot: 0xf0c9a0,
+    sickBody: 0xa9b8ad,
+    sickWing: 0xb3c1b6,
+    sickShade: 0x93a296
   };
+
+  // 每 10 分换一种颜色：白 -> 红 -> 橙 -> 黄 -> 绿 -> 蓝 -> 紫 -> 粉 -> 灰 -> 黑
+  var LEVEL_COLORS = [
+    { name: "白色", hex: 0xfbfbf7 },
+    { name: "红色", hex: 0xe8615a },
+    { name: "橙色", hex: 0xf0913c },
+    { name: "黄色", hex: 0xf2c53d },
+    { name: "绿色", hex: 0x4faa62 },
+    { name: "蓝色", hex: 0x4a8fd4 },
+    { name: "紫色", hex: 0x8b6bd4 },
+    { name: "粉色", hex: 0xef8fb8 },
+    { name: "灰色", hex: 0x8d9aa5 },
+    { name: "黑色", hex: 0x3a4148 }
+  ];
+
+  var SCORE_PER_LEVEL = 10;
+  var EGG_SCORE = -10;
+  var REVIVE_SICK_AT = 10;
+  var REVIVE_DONE_AT = 20;
+  var ANGER_FREE_MS = 5 * 60 * 1000;
+  var ANGER_AUTO_MS = 10 * 60 * 1000;
+  var STORAGE_KEY = "parrot-garden-score-v1";
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -428,6 +455,28 @@
     }
   }
 
+  // ---------------------------------------------------------------- egg
+  var eggGroup = new THREE.Group();
+  eggGroup.position.set(0, 0.78, 0.05);
+  eggGroup.visible = false;
+  world.add(eggGroup);
+
+  var eggShell = sphere(0.62, mat(COLORS.eggShell, { roughness: 0.5 }), eggGroup, 30);
+  eggShell.scale.set(0.86, 1.16, 0.86);
+
+  var eggSpotMat = mat(COLORS.eggSpot, { roughness: 0.7 });
+  var eggSpotSpots = [
+    [0.3, 0.34, 0.42, 0.13],
+    [-0.34, 0.06, 0.46, 0.1],
+    [0.18, -0.3, 0.46, 0.12],
+    [-0.2, -0.52, 0.38, 0.09]
+  ];
+  for (var es = 0; es < eggSpotSpots.length; es++) {
+    var eSpot = sphere(eggSpotSpots[es][3], eggSpotMat, eggGroup, 12);
+    eSpot.position.set(eggSpotSpots[es][0], eggSpotSpots[es][1], eggSpotSpots[es][2]);
+    eSpot.scale.set(1, 0.8, 0.4);
+  }
+
   // ---------------------------------------------------------------- particles
   var particles = [];
   var heartGeo = new THREE.SphereGeometry(0.1, 10, 8);
@@ -524,16 +573,17 @@
 
   // ---------------------------------------------------------------- state
   var state = {
-    growth: 0,
-    growthMax: 10,
-    mood: "happy",
+    score: 0,
+    mode: "healthy", // healthy | sick | egg
+    reviving: false,
+    reviveProgress: 0,
+    angerStartedAt: null,
     pats: 0,
     lastInteraction: 0,
     actionTimer: 0,
     action: null,
     blinkTimer: 2 + Math.random() * 2,
-    blink: 0,
-    chirpTimer: 0
+    blink: 0
   };
 
   var speechTimer = null;
@@ -547,23 +597,285 @@
     }, duration || 2600);
   }
 
-  function setGrowth(value) {
-    var max = state.growthMax;
-    var v = clamp(Math.round(value), 0, max);
-    state.growth = v;
+  function mixHex(hex, target, amount) {
+    var r = (hex >> 16) & 255;
+    var g = (hex >> 8) & 255;
+    var b = hex & 255;
+    var tr = (target >> 16) & 255;
+    var tg = (target >> 8) & 255;
+    var tb = target & 255;
+    return (
+      (Math.round(lerp(r, tr, amount)) << 16) |
+      (Math.round(lerp(g, tg, amount)) << 8) |
+      Math.round(lerp(b, tb, amount))
+    );
+  }
 
-    var ratio = v / max;
-    document.getElementById("growth-fill").style.width = (ratio * 100).toFixed(1) + "%";
-    document.getElementById("growth-text").textContent = v + " / " + max;
+  function lightenHex(hex) {
+    return mixHex(hex, 0xffffff, 0.22);
+  }
 
+  function darkenHex(hex) {
+    return mixHex(hex, 0x000000, 0.16);
+  }
+
+  function levelIndexFromScore(score) {
+    var lv = Math.floor(Math.max(0, score) / SCORE_PER_LEVEL);
+    return Math.round(clamp(lv, 0, LEVEL_COLORS.length - 1));
+  }
+
+  // 同一种颜色里，分数越高，宠物越大
+  function sizeFromScore(score) {
+    var maxScore = LEVEL_COLORS.length * SCORE_PER_LEVEL - 0.001;
+    var capped = clamp(score, 0, maxScore);
+    var lv = Math.floor(capped / SCORE_PER_LEVEL);
+    var within = (capped % SCORE_PER_LEVEL) / SCORE_PER_LEVEL;
+    return lerp(0.55, 1.14, clamp((lv + within) / LEVEL_COLORS.length, 0, 1));
+  }
+
+  function formatDuration(ms) {
+    var total = Math.max(0, Math.round(ms / 1000));
+    var m = Math.floor(total / 60);
+    var s = total % 60;
+    return m + "分" + (s < 10 ? "0" : "") + s + "秒";
+  }
+
+  function save() {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          score: state.score,
+          mode: state.mode,
+          reviving: state.reviving,
+          reviveProgress: state.reviveProgress
+        })
+      );
+    } catch (err) {
+      /* 隐私模式等存不了就忽略 */
+    }
+  }
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      if (typeof data.score === "number") state.score = data.score;
+      if (data.mode === "sick" || data.mode === "egg" || data.mode === "healthy") {
+        state.mode = data.mode;
+      }
+      state.reviving = !!data.reviving;
+      if (typeof data.reviveProgress === "number") {
+        state.reviveProgress = clamp(data.reviveProgress, 0, REVIVE_DONE_AT);
+      }
+    } catch (err) {
+      /* 数据坏了就从头开始 */
+    }
+  }
+
+  function applyAppearance() {
+    var isEgg = state.mode === "egg";
+    parrot.visible = !isEgg;
+    eggGroup.visible = isEgg;
+
+    if (isEgg) {
+      parrot.userData.targetScale = 1;
+      return;
+    }
+
+    if (state.mode === "sick") {
+      bodyMat.color.setHex(COLORS.sickBody);
+      wingMat.color.setHex(COLORS.sickWing);
+      shadeMat.color.setHex(COLORS.sickShade);
+      tailMat.color.setHex(COLORS.sickWing);
+      parrot.userData.targetScale = 0.5;
+      return;
+    }
+
+    var lv = LEVEL_COLORS[levelIndexFromScore(state.score)];
+    bodyMat.color.setHex(lv.hex);
+    wingMat.color.setHex(lightenHex(lv.hex));
+    shadeMat.color.setHex(darkenHex(lv.hex));
+    tailMat.color.setHex(lightenHex(lv.hex));
+    parrot.userData.targetScale = sizeFromScore(state.score);
+  }
+
+  function renderHud() {
+    var levelEl = document.getElementById("level-text");
+    var scoreEl = document.getElementById("score-text");
+    var fill = document.getElementById("growth-fill");
     var hint = document.getElementById("growth-hint");
-    if (v === 0) hint.textContent = "今天还没有算分";
-    else if (v >= max) hint.textContent = "进度满了，就要变颜色啦";
-    else hint.textContent = "再攒 " + (max - v) + " 分就变颜色";
 
-    // 同一个颜色里，分数越高，鹦鹉越大
-    var scale = lerp(0.86, 1.14, ratio);
-    parrot.userData.targetScale = scale;
+    if (state.reviving) {
+      levelEl.textContent = state.mode === "egg" ? "一颗蛋" : "生病中";
+      scoreEl.textContent = state.reviveProgress + " / " + REVIVE_DONE_AT;
+      fill.classList.add("is-revive");
+      fill.style.width = ((state.reviveProgress / REVIVE_DONE_AT) * 100).toFixed(1) + "%";
+      hint.textContent =
+        state.mode === "egg" ? "加满 10 分，我就先孵出来" : "再加满 10 分，我就完全好了";
+      return;
+    }
+
+    fill.classList.remove("is-revive");
+
+    if (state.mode === "sick") {
+      levelEl.textContent = "生病了";
+      scoreEl.textContent = state.score + " 分";
+      fill.style.width = "0%";
+      hint.textContent = "回到 0 分，我就好了";
+      return;
+    }
+
+    var lv = levelIndexFromScore(state.score);
+    var within = Math.max(0, state.score) % SCORE_PER_LEVEL;
+    levelEl.textContent = LEVEL_COLORS[lv].name;
+    scoreEl.textContent = state.score + " 分";
+    fill.style.width = ((within / SCORE_PER_LEVEL) * 100).toFixed(1) + "%";
+    hint.textContent =
+      state.score <= 0
+        ? "做一件好事，我就会长大"
+        : "再攒 " + (SCORE_PER_LEVEL - within) + " 分就换颜色";
+  }
+
+  function changeScore(delta, options) {
+    var opts = options || {};
+
+    // 蛋和刚孵出来的生病阶段，加分都记在“复活进度”上
+    if (state.reviving) {
+      if (delta <= 0) {
+        if (!opts.silent) say("我现在还很虚弱，先做好事吧", 3200);
+        return false;
+      }
+      state.reviveProgress = clamp(state.reviveProgress + delta, 0, REVIVE_DONE_AT);
+
+      if (state.reviveProgress >= REVIVE_DONE_AT) {
+        state.reviving = false;
+        state.mode = "healthy";
+        state.score = 0;
+        if (!opts.silent) {
+          say("我完全好啦！谢谢你没有放弃我", 3800);
+          chirp([520, 700, 900]);
+          spawn("sparkle", 14);
+        }
+      } else if (state.reviveProgress >= REVIVE_SICK_AT) {
+        state.mode = "sick";
+        if (!opts.silent) {
+          say("我孵出来了，但还有点不舒服", 3400);
+          spawn("heart", 6);
+        }
+      } else {
+        state.mode = "egg";
+      }
+
+      save();
+      applyAppearance();
+      renderHud();
+      return true;
+    }
+
+    state.score += delta;
+
+    if (state.score <= EGG_SCORE) {
+      state.score = EGG_SCORE;
+      state.mode = "egg";
+      state.reviving = true;
+      state.reviveProgress = 0;
+      if (!opts.silent) {
+        say("我变成一颗蛋了……做好事我就会回来", 4200);
+        chirp([300, 260]);
+      }
+    } else if (state.score < 0) {
+      state.mode = "sick";
+      if (!opts.silent) {
+        say(delta < 0 ? "我有点不舒服……" : "我好一点了，但还是没精神", 3400);
+      }
+    } else {
+      state.mode = "healthy";
+    }
+
+    save();
+    applyAppearance();
+    renderHud();
+    return true;
+  }
+
+  // ---------------------------------------------------------------- 生气计时
+  var angerPanel = document.getElementById("anger-panel");
+  var angerTimeEl = document.getElementById("anger-time");
+  var angerHintEl = document.getElementById("anger-hint");
+
+  function showAngerPanel() {
+    angerPanel.hidden = false;
+    if (hintEl) hintEl.classList.add("is-hidden");
+  }
+
+  function hideAngerPanel() {
+    angerPanel.hidden = true;
+  }
+
+  function updateAngerPanel(elapsed) {
+    var total = Math.floor(elapsed / 1000);
+    var m = Math.floor(total / 60);
+    var s = total % 60;
+    angerTimeEl.textContent = m + ":" + (s < 10 ? "0" : "") + s;
+    angerHintEl.textContent =
+      elapsed < ANGER_FREE_MS
+        ? "5 分钟内平静下来，我就会变回来"
+        : "已经超过 5 分钟啦，现在平静不加也不减";
+  }
+
+  function startAnger() {
+    if (state.angerStartedAt !== null) {
+      say("我知道你还在生气，深呼吸，我陪着你");
+      return;
+    }
+    if (state.mode === "egg") {
+      say("我还是一颗蛋……先做好事让我回来好吗", 3400);
+      return;
+    }
+    state.angerStartedAt = Date.now();
+    changeScore(-1, { silent: true });
+    say("没关系，我在。慢慢呼吸，我等你", 4200);
+    showAngerPanel();
+    updateAngerPanel(0);
+    chirp([420, 360]);
+  }
+
+  function calmDown() {
+    if (state.angerStartedAt === null) {
+      say("现在没有在生气呀，我们一起保持", 3000);
+      chirp([620, 760]);
+      return;
+    }
+
+    var elapsed = Date.now() - state.angerStartedAt;
+    state.angerStartedAt = null;
+    hideAngerPanel();
+
+    if (elapsed <= ANGER_FREE_MS) {
+      changeScore(1, { silent: true });
+      say("你做到了！只用 " + formatDuration(elapsed) + "，我变回来啦", 3800);
+      spawn("sparkle", 10);
+      chirp([620, 820]);
+    } else {
+      say("谢谢你平静下来。这一次不加也不减", 3600);
+      chirp([520, 620]);
+    }
+  }
+
+  function checkAngerTimer() {
+    if (state.angerStartedAt === null) return;
+    var elapsed = Date.now() - state.angerStartedAt;
+    updateAngerPanel(elapsed);
+
+    if (elapsed >= ANGER_AUTO_MS) {
+      state.angerStartedAt = null;
+      hideAngerPanel();
+      changeScore(-1, { silent: true });
+      say("过了 10 分钟了。我再小一点，但我还在，等你", 4200);
+      chirp([380, 320]);
+    }
   }
 
   // ---------------------------------------------------------------- actions
@@ -610,19 +922,85 @@
     else playTalk();
   }
 
-  var buttons = document.querySelectorAll(".action-button");
-  for (var b = 0; b < buttons.length; b++) {
+  function flash(button) {
+    button.classList.add("is-busy");
+    window.setTimeout(function () {
+      button.classList.remove("is-busy");
+    }, 220);
+  }
+
+  // 照顾面板：不加分也不扣分，就是陪它玩
+  var careButtons = document.querySelectorAll(".care-button");
+  for (var b = 0; b < careButtons.length; b++) {
+    (function (button) {
+      button.addEventListener("click", function () {
+        react(button.getAttribute("data-action"));
+        flash(button);
+        dismissHint();
+      });
+    })(careButtons[b]);
+  }
+
+  // 记录面板：加分和扣分
+  var scoreButtons = document.querySelectorAll(".score-button");
+  for (var sb = 0; sb < scoreButtons.length; sb++) {
     (function (button) {
       button.addEventListener("click", function () {
         var action = button.getAttribute("data-action");
-        react(action);
-        button.classList.add("is-busy");
-        window.setTimeout(function () {
-          button.classList.remove("is-busy");
-        }, 220);
+        flash(button);
         dismissHint();
+
+        if (action === "angry") {
+          startAnger();
+        } else if (action === "calm") {
+          calmDown();
+        } else if (action === "homework-done") {
+          changeScore(1);
+          say("作业完成啦，真棒！", 3000);
+          spawn("sparkle", 8);
+          chirp([560, 720]);
+        } else if (action === "homework-missed") {
+          changeScore(-1);
+          say("没完成也没关系，明天再试一次", 3200);
+          chirp([400, 340]);
+        } else if (action === "talk-happy") {
+          changeScore(2);
+          say("你们商量得很开心，我长大一点点", 3400);
+          spawn("heart", 8);
+          chirp([620, 780, 900]);
+        } else if (action === "talk-sad") {
+          changeScore(-2);
+          say("商量完还是难过……我陪着你，下次再试", 3600);
+          chirp([420, 350]);
+        }
       });
-    })(buttons[b]);
+    })(scoreButtons[sb]);
+  }
+
+  // 面板切换：记录 / 照顾
+  var tabs = document.querySelectorAll(".dock-tab");
+  var panels = document.querySelectorAll(".dock-panel");
+  for (var tb = 0; tb < tabs.length; tb++) {
+    (function (tab) {
+      tab.addEventListener("click", function () {
+        var name = tab.getAttribute("data-tab");
+        for (var i = 0; i < tabs.length; i++) {
+          var on = tabs[i] === tab;
+          tabs[i].classList.toggle("is-active", on);
+          tabs[i].setAttribute("aria-selected", on ? "true" : "false");
+        }
+        for (var j = 0; j < panels.length; j++) {
+          panels[j].hidden = panels[j].getAttribute("data-panel") !== name;
+        }
+      });
+    })(tabs[tb]);
+  }
+
+  var calmButton = document.getElementById("calm-button");
+  if (calmButton) {
+    calmButton.addEventListener("click", function () {
+      calmDown();
+    });
   }
 
   function dismissHint() {
@@ -841,10 +1219,19 @@
       state.blinkTimer = 2 + Math.random() * 3;
     }
     if (state.blink > 0) state.blink -= dt;
-    var lid = state.blink > 0 ? 0.12 : 1;
+    var lid = state.blink > 0 ? 0.12 : state.mode === "sick" ? 0.45 : 1;
     for (var ei = 0; ei < eyes.length; ei++) {
       eyes[ei].scale.y = lid;
     }
+
+    // 生病时垂头丧气，变成蛋以后轻轻晃动
+    parrot.rotation.z = lerp(parrot.rotation.z, state.mode === "sick" ? 0.13 : 0, 0.06);
+    if (eggGroup.visible) {
+      eggGroup.rotation.z = reduceMotion ? 0 : Math.sin(elapsed * 2.4) * 0.05;
+      eggGroup.position.y = 0.78 + (reduceMotion ? 0 : Math.sin(elapsed * 1.8) * 0.03);
+    }
+
+    checkAngerTimer();
 
     // action hop
     if (state.actionTimer > 0) {
@@ -899,26 +1286,66 @@
 
   // ---------------------------------------------------------------- boot
   resize();
-  setGrowth(0);
+  load();
+  applyAppearance();
+  renderHud();
   updateCamera();
   renderer.render(scene, camera);
   animate();
 
   window.setTimeout(function () {
     loading.classList.add("is-hidden");
-    say("你好，我是小白！");
+    if (state.mode === "egg") {
+      say("我还在蛋里……做好事我就会回来", 4200);
+    } else if (state.mode === "sick") {
+      say("我有点没精神……做好事我就会好起来", 4200);
+    } else {
+      say("你好，我是小白！");
+    }
   }, 320);
 
-  // 以后接规则时，从这里调用
+  // 提示看一会儿就收起来，不要挡住小鹦鹉
+  window.setTimeout(dismissHint, 6000);
+
+  // 给以后的功能（周报、商场等）和自动测试用
   window.parrotGame = {
-    setGrowth: setGrowth,
+    addScore: changeScore,
+    setScore: function (value) {
+      state.reviving = false;
+      state.reviveProgress = 0;
+      state.score = Math.round(value);
+      if (state.score <= EGG_SCORE) {
+        state.score = EGG_SCORE;
+        state.mode = "egg";
+        state.reviving = true;
+        state.reviveProgress = 0;
+      } else if (state.score < 0) {
+        state.mode = "sick";
+      } else {
+        state.mode = "healthy";
+      }
+      save();
+      applyAppearance();
+      renderHud();
+    },
+    startAnger: startAnger,
+    calmDown: calmDown,
+    shiftAnger: function (ms) {
+      if (state.angerStartedAt !== null) state.angerStartedAt -= ms;
+    },
     say: say,
     react: react,
     getState: function () {
       return {
-        growth: state.growth,
-        growthMax: state.growthMax,
-        mood: state.mood
+        score: state.score,
+        mode: state.mode,
+        reviving: state.reviving,
+        reviveProgress: state.reviveProgress,
+        angerActive: state.angerStartedAt !== null,
+        level:
+          state.mode === "healthy"
+            ? LEVEL_COLORS[levelIndexFromScore(state.score)].name
+            : state.mode
       };
     }
   };
