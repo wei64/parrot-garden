@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#bfe8ff" />
+    <meta name="description" content="一只会陪你管理情绪和学习的小鹦鹉。" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>小鹦鹉 · 成长花园</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="scene" aria-label="3D 小鹦鹉"></canvas>
+
+      <div id="loading" class="loading" role="status">
+        <div class="loading-bird" aria-hidden="true"></div>
+        <p>小鹦鹉正在飞来...</p>
+      </div>
+
+      <div id="fallback" class="fallback" hidden>
+        <h2>小鹦鹉飞不动了</h2>
+        <p>这个浏览器好像打不开 3D。换一个浏览器，或者用手机、平板再试试。</p>
+      </div>
+
+      <header class="hud">
+        <section class="pet-status" aria-label="小鹦鹉状态">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div class="status-copy">
+            <p class="eyebrow">我的小鹦鹉</p>
+            <h1 id="pet-name">小白</h1>
+            <div class="growth-row">
+              <span>成长</span>
+              <strong id="growth-text">0 / 10</strong>
+            </div>
+            <div class="growth-track" aria-hidden="true">
+              <div id="growth-fill" class="growth-fill"></div>
+            </div>
+            <p id="growth-hint" class="growth-hint">今天还没有算分</p>
+          </div>
+        </section>
+
+        <button id="sound-toggle" class="icon-button" type="button" aria-label="关闭声音" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-on">
+            <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+            <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+          </svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-off">
+            <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+            <path d="m16 9 5 6"></path>
+            <path d="m21 9-5 6"></path>
+          </svg>
+        </button>
+      </header>
+
+      <p id="speech" class="speech" role="status" aria-live="polite"></p>
+      <p id="interaction-hint" class="interaction-hint">点一点小鹦鹉，陪陪它</p>
+
+      <footer class="action-dock" aria-label="照顾小鹦鹉">
+        <button class="action-button" type="button" data-action="pat">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11"></path>
+            <path d="M11 10V4.5a1.5 1.5 0 0 1 3 0V10"></path>
+            <path d="M14 10V6a1.5 1.5 0 0 1 3 0v5"></path>
+            <path d="M8 10.5 6.8 9.3a1.5 1.5 0 0 0-2.3 1.9L7 16a6 6 0 0 0 5.2 3H13a6 6 0 0 0 6-6V9a1.5 1.5 0 0 0-3 0"></path>
+          </svg>
+          <span>摸摸头</span>
+        </button>
+
+        <button class="action-button" type="button" data-action="brush">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m14.5 4.5 5 5"></path>
+            <path d="m4 20 10.5-10.5"></path>
+            <path d="M11 6.5 15.5 2l6.5 6.5-4.5 4.5"></path>
+            <path d="m4 20 2 .5.5-2"></path>
+          </svg>
+          <span>梳梳毛</span>
+        </button>
+
+        <button class="action-button" type="button" data-action="feed">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 11h14l-1.3 9H6.3L5 11Z"></path>
+            <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
+            <path d="M9 15h6"></path>
+          </svg>
+          <span>喂一口</span>
+        </button>
+
+        <button class="action-button" type="button" data-action="talk">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5.5A7 7 0 0 1 11 4h2a7 7 0 0 1 7 7Z"></path>
+            <path d="M9 11h.01"></path>
+            <path d="M13 11h.01"></path>
+            <path d="M17 11h.01"></path>
+          </svg>
+          <span>叫一声</span>
+        </button>
+      </footer>
+    </main>
+
+    <script src="./vendor/three.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
