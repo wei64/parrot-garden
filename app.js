@@ -45,6 +45,9 @@
     sickShade: 0x93a296
   };
 
+  // 小鹦鹉的名字
+  var PET_NAME = "乐乐";
+
   // 每 10 分换一种颜色：白 -> 红 -> 橙 -> 黄 -> 绿 -> 蓝 -> 紫 -> 粉 -> 灰 -> 黑
   var LEVEL_COLORS = [
     { name: "白色", hex: 0xfbfbf7 },
@@ -1403,6 +1406,11 @@
   load();
   applyAppearance();
   renderHud();
+
+  // 名字统一从这里来
+  var nameEl = document.getElementById("pet-name");
+  if (nameEl) nameEl.textContent = PET_NAME;
+
   updateCamera();
   renderer.render(scene, camera);
   animate();
@@ -1414,7 +1422,7 @@
     } else if (state.mode === "sick") {
       say("我有点没精神……做好事我就会好起来", 4200);
     } else {
-      say("你好，我是小白！");
+      say("你好，我是" + PET_NAME + "！");
     }
   }, 320);
 
