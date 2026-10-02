@@ -722,6 +722,50 @@
         : "再攒 " + (SCORE_PER_LEVEL - within) + " 分就换颜色";
   }
 
+  // ---------------------------------------------------------------- 点错了，加回来
+  var undoStack = [];
+  var UNDO_LIMIT = 30;
+
+  function updateUndoButton() {
+    var btn = document.getElementById("undo-button");
+    if (btn) btn.disabled = undoStack.length === 0;
+  }
+
+  function pushUndo() {
+    undoStack.push({
+      score: state.score,
+      mode: state.mode,
+      reviving: state.reviving,
+      reviveProgress: state.reviveProgress
+    });
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    updateUndoButton();
+  }
+
+  function undoLast() {
+    if (undoStack.length === 0) {
+      say("现在没有点错的地方呀", 3000);
+      chirp([560, 620]);
+      return false;
+    }
+
+    var snap = undoStack.pop();
+    state.score = snap.score;
+    state.mode = snap.mode;
+    state.reviving = snap.reviving;
+    state.reviveProgress = snap.reviveProgress;
+
+    save();
+    applyAppearance();
+    renderHud();
+    updateUndoButton();
+
+    say("好，我把刚才那次加回来了", 3200);
+    spawn("heart", 6);
+    chirp([620, 760]);
+    return true;
+  }
+
   function changeScore(delta, options) {
     var opts = options || {};
 
@@ -731,6 +775,7 @@
         if (!opts.silent) say("我现在还很虚弱，先做好事吧", 3200);
         return false;
       }
+      if (!opts.skipUndo) pushUndo();
       state.reviveProgress = clamp(state.reviveProgress + delta, 0, REVIVE_DONE_AT);
 
       if (state.reviveProgress >= REVIVE_DONE_AT) {
@@ -758,6 +803,7 @@
       return true;
     }
 
+    if (!opts.skipUndo) pushUndo();
     state.score += delta;
 
     if (state.score <= EGG_SCORE) {
@@ -926,44 +972,73 @@
   }
 
   // 记录面板：加分和扣分
+  function runScoreAction(action) {
+    if (action === "angry") {
+      startAnger();
+    } else if (action === "calm") {
+      calmDown();
+    } else if (action === "homework-done") {
+      changeScore(1);
+      say("作业完成啦，真棒！", 3000);
+      spawn("sparkle", 8);
+      chirp([560, 720]);
+    } else if (action === "homework-missed") {
+      changeScore(-1);
+      say("没完成也没关系，明天再试一次", 3200);
+      chirp([400, 340]);
+    } else if (action === "talk-happy") {
+      changeScore(2);
+      say("你们商量得很开心，我长大一点点", 3400);
+      spawn("heart", 8);
+      chirp([620, 780, 900]);
+    } else if (action === "talk-sad") {
+      changeScore(-2);
+      say("商量完还是难过……我陪着你，下次再试", 3600);
+      chirp([420, 350]);
+    } else if (action === "sleep-drag") {
+      changeScore(-2);
+      say("睡前事情要快点做完哦，我等你", 3400);
+      chirp([420, 350]);
+    } else if (action === "sleep-wake") {
+      changeScore(-2);
+      say("半夜醒啦？没关系，我陪你睡", 3400);
+      chirp([400, 330]);
+    } else if (action === "sleep-chat") {
+      changeScore(-2);
+      say("半夜和妹妹聊天太开心啦，明天要早点睡", 3600);
+      chirp([420, 340]);
+    } else if (action === "sleep-good") {
+      changeScore(2);
+      say("昨晚睡得真香，我又精神啦", 3400);
+      spawn("sparkle", 8);
+      chirp([620, 780, 900]);
+    }
+  }
+
   var scoreButtons = document.querySelectorAll(".score-button");
   for (var sb = 0; sb < scoreButtons.length; sb++) {
     (function (button) {
       button.addEventListener("click", function () {
-        var action = button.getAttribute("data-action");
+        runScoreAction(button.getAttribute("data-action"));
         flash(button);
         dismissHint();
-
-        if (action === "angry") {
-          startAnger();
-        } else if (action === "calm") {
-          calmDown();
-        } else if (action === "homework-done") {
-          changeScore(1);
-          say("作业完成啦，真棒！", 3000);
-          spawn("sparkle", 8);
-          chirp([560, 720]);
-        } else if (action === "homework-missed") {
-          changeScore(-1);
-          say("没完成也没关系，明天再试一次", 3200);
-          chirp([400, 340]);
-        } else if (action === "talk-happy") {
-          changeScore(2);
-          say("你们商量得很开心，我长大一点点", 3400);
-          spawn("heart", 8);
-          chirp([620, 780, 900]);
-        } else if (action === "talk-sad") {
-          changeScore(-2);
-          say("商量完还是难过……我陪着你，下次再试", 3600);
-          chirp([420, 350]);
-        }
       });
     })(scoreButtons[sb]);
   }
 
-  // 面板切换：记录 / 照顾
+  // 面板切换：记录 / 睡觉 / 照顾
   var tabs = document.querySelectorAll(".dock-tab");
   var panels = document.querySelectorAll(".dock-panel");
+  var dockEl = document.querySelector(".dock");
+
+  // 睡觉面板比别的面板高，把它的高度写进 CSS 变量，
+  // 手机上的左右飞行按钮就能自动抬到面板上面
+  function updateDockMetrics() {
+    if (!dockEl) return;
+    var h = dockEl.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--dock-height", Math.ceil(h) + "px");
+  }
+
   for (var tb = 0; tb < tabs.length; tb++) {
     (function (tab) {
       tab.addEventListener("click", function () {
@@ -976,6 +1051,7 @@
         for (var j = 0; j < panels.length; j++) {
           panels[j].hidden = panels[j].getAttribute("data-panel") !== name;
         }
+        updateDockMetrics();
       });
     })(tabs[tb]);
   }
@@ -986,6 +1062,17 @@
       calmDown();
     });
   }
+
+  var undoButton = document.getElementById("undo-button");
+  if (undoButton) {
+    undoButton.addEventListener("click", function () {
+      undoLast();
+      flash(undoButton);
+      dismissHint();
+    });
+  }
+
+  updateUndoButton();
 
   function dismissHint() {
     hintEl.classList.add("is-hidden");
@@ -1388,13 +1475,20 @@
     renderer.setSize(w, h, false);
   }
 
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", function () {
+    resize();
+    updateDockMetrics();
+  });
   window.addEventListener("orientationchange", function () {
-    window.setTimeout(resize, 220);
+    window.setTimeout(function () {
+      resize();
+      updateDockMetrics();
+    }, 220);
   });
 
   if (window.ResizeObserver) {
     new window.ResizeObserver(resize).observe(appEl);
+    if (dockEl) new window.ResizeObserver(updateDockMetrics).observe(dockEl);
   }
 
   document.addEventListener("visibilitychange", function () {
@@ -1403,6 +1497,7 @@
 
   // ---------------------------------------------------------------- boot
   resize();
+  updateDockMetrics();
   load();
   applyAppearance();
   renderHud();
@@ -1432,7 +1527,16 @@
   // 给以后的功能（周报、商场等）和自动测试用
   window.parrotGame = {
     addScore: changeScore,
+    act: runScoreAction,
+    undo: undoLast,
+    canUndo: function () {
+      return undoStack.length > 0;
+    },
     setScore: function (value) {
+      // 这是硬重置：清掉撤销历史，免得“加回来”退到重置以前的状态
+      undoStack.length = 0;
+      updateUndoButton();
+
       state.reviving = false;
       state.reviveProgress = 0;
       state.score = Math.round(value);

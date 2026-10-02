@@ -378,6 +378,49 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* 睡觉的按钮字比较长，用两列排 */
+.dock-panel[data-panel="sleep"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.undo-button {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(44, 58, 51, 0.28);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease, opacity 160ms ease;
+}
+
+.undo-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.undo-button:active {
+  transform: translateY(2px) scale(0.99);
+  background: #fff;
+}
+
+.undo-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .score-button,
 .care-button {
   display: flex;
@@ -613,9 +656,10 @@ body.is-egg .move-button {
     bottom: calc(var(--safe-bottom) + 168px);
   }
 
-  /* 手机上把方向按钮抬到面板上方，免得挡住记录按钮 */
+  /* 手机上把方向按钮抬到面板上方，免得挡住记录按钮。
+     面板高度由 JS 写进 --dock-height，睡觉面板变高时按钮会自动跟着抬高。 */
   .move-button {
-    bottom: calc(var(--safe-bottom) + 214px);
+    bottom: calc(var(--safe-bottom) + var(--dock-height, 186px) + 28px);
     width: 56px;
     height: 56px;
   }
