@@ -169,74 +169,50 @@
     hill.castShadow = false;
   }
 
-  // tree trunk + branch
-  var trunk = mesh(
-    new THREE.CylinderGeometry(0.34, 0.52, 5, 18),
-    mat(COLORS.barkDark, { roughness: 0.95 }),
-    world
-  );
-  trunk.position.set(2.5, 0.05, -0.55);
-
-  var branch = mesh(
-    new THREE.CylinderGeometry(0.15, 0.19, 5.6, 16),
-    mat(COLORS.bark, { roughness: 0.9 }),
-    world
-  );
-  branch.rotation.z = Math.PI / 2;
-  branch.rotation.y = 0.06;
-  branch.position.set(0.1, -0.05, -0.1);
-
-  // a smaller branch offshoot
-  var twig = mesh(
-    new THREE.CylinderGeometry(0.07, 0.09, 1.5, 12),
-    mat(COLORS.bark, { roughness: 0.9 }),
-    world
-  );
-  twig.position.set(-1.9, 0.5, -0.3);
-  twig.rotation.z = 0.7;
-  twig.rotation.x = -0.2;
-
-  // leaves
-  var leafMat = mat(COLORS.leaf, { roughness: 0.85 });
-  var leafLightMat = mat(COLORS.leafLight, { roughness: 0.85 });
-  var leafSpots = [
-    [3.1, 2.1, -0.9, 1.35],
-    [2.1, 2.8, -0.5, 1.15],
-    [3.9, 2.9, -1.4, 1.5],
-    [1.6, 2.2, 0.1, 0.9],
-    [-2.2, 0.95, -0.4, 0.72],
-    [-2.9, 1.35, -0.6, 0.55],
-    [4.3, 1.7, -1.9, 0.95]
+  // 远处的小树丛（只作背景，鹦鹉散步的地方是空的）
+  var bushMat = mat(COLORS.leaf, { roughness: 0.88 });
+  var bushLightMat = mat(COLORS.leafLight, { roughness: 0.88 });
+  var bushSpots = [
+    [-10.5, -2.35, -4.2, 1.25],
+    [10.2, -2.35, -3.6, 1.1],
+    [-13.5, -2.3, -6.5, 1.5],
+    [13.2, -2.3, -6, 1.4],
+    [0.5, -2.35, -8.5, 1.6],
+    [-6.5, -2.35, -8, 1.3]
   ];
-  for (var i = 0; i < leafSpots.length; i++) {
-    var spot = leafSpots[i];
-    var blob = sphere(
-      spot[3],
-      i % 2 === 0 ? leafMat : leafLightMat,
-      world,
-      20
-    );
-    blob.position.set(spot[0], spot[1], spot[2]);
-    blob.scale.set(1.15, 0.82, 1);
+  for (var i = 0; i < bushSpots.length; i++) {
+    var bs = bushSpots[i];
+    for (var bb = 0; bb < 3; bb++) {
+      var bush = sphere(
+        bs[3] * (0.72 + bb * 0.16),
+        bb % 2 === 0 ? bushMat : bushLightMat,
+        world,
+        18
+      );
+      bush.position.set(bs[0] + (bb - 1) * bs[3] * 0.7, bs[1] + bs[3] * 0.35, bs[2] + bb * 0.2);
+      bush.scale.set(1.1, 0.85, 1);
+      bush.castShadow = false;
+    }
   }
 
   // flowers on the grass
   var petalColors = [0xff9fb0, 0xffd166, 0xa7d8ff, 0xffb27a, 0xd7a8ff];
   var stemMat = mat(0x4a9a5c, { roughness: 0.9 });
   var flowerSpots = [
-    [-4.2, -2.35, 2.2],
-    [-3.1, -2.35, 3.6],
-    [3.4, -2.35, 2.6],
-    [4.6, -2.35, 1.1],
-    [-5.4, -2.35, 0.4],
-    [1.9, -2.35, 4.3],
-    [-1.2, -2.35, 4.6],
-    [5.6, -2.35, -0.6]
+    [-4.2, -2.35, 0.6],
+    [-3.1, -2.35, 1.4],
+    [3.4, -2.35, 0.8],
+    [4.6, -2.35, -0.4],
+    [-5.4, -2.35, -1.2],
+    [1.9, -2.35, 1.9],
+    [-1.2, -2.35, 2.2],
+    [5.6, -2.35, -1.8]
   ];
   for (var f = 0; f < flowerSpots.length; f++) {
     var fs = flowerSpots[f];
     var flower = new THREE.Group();
     flower.position.set(fs[0], fs[1], fs[2]);
+    flower.scale.setScalar(0.62);
     world.add(flower);
 
     var stem = mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.6, 8), stemMat, flower);
@@ -295,9 +271,13 @@
   sunDisc.castShadow = false;
 
   // ---------------------------------------------------------------- parrot
+  var GROUND_Y = -2.44; // 草地表面，鹦鹉站在这里
+  var WALK_MIN_X = -7.6;
+  var WALK_MAX_X = 7.6;
+
   var parrot = new THREE.Group();
   world.add(parrot);
-  parrot.position.y = 0.12;
+  parrot.position.set(0, GROUND_Y, 0.5);
 
   var bodyMat = mat(COLORS.bodyWhite, { roughness: 0.62 });
   var shadeMat = mat(COLORS.bodyShade, { roughness: 0.7 });
@@ -457,7 +437,7 @@
 
   // ---------------------------------------------------------------- egg
   var eggGroup = new THREE.Group();
-  eggGroup.position.set(0, 0.78, 0.05);
+  eggGroup.position.set(0, GROUND_Y + 0.72, 0.5);
   eggGroup.visible = false;
   world.add(eggGroup);
 
@@ -630,7 +610,7 @@
     var capped = clamp(score, 0, maxScore);
     var lv = Math.floor(capped / SCORE_PER_LEVEL);
     var within = (capped % SCORE_PER_LEVEL) / SCORE_PER_LEVEL;
-    return lerp(0.55, 1.14, clamp((lv + within) / LEVEL_COLORS.length, 0, 1));
+    return lerp(0.62, 1.15, clamp((lv + within) / LEVEL_COLORS.length, 0, 1));
   }
 
   function formatDuration(ms) {
@@ -678,6 +658,7 @@
     var isEgg = state.mode === "egg";
     parrot.visible = !isEgg;
     eggGroup.visible = isEgg;
+    document.body.classList.toggle("is-egg", isEgg);
 
     if (isEgg) {
       parrot.userData.targetScale = 1;
@@ -689,7 +670,7 @@
       wingMat.color.setHex(COLORS.sickWing);
       shadeMat.color.setHex(COLORS.sickShade);
       tailMat.color.setHex(COLORS.sickWing);
-      parrot.userData.targetScale = 0.5;
+      parrot.userData.targetScale = 0.56;
       return;
     }
 
@@ -1062,7 +1043,7 @@
   // ---------------------------------------------------------------- camera control
   var orbit = { yaw: 0, pitch: 0.26, distance: 7.2 };
   var sway = 0;
-  var target = new THREE.Vector3(0, 1.35, 0);
+  var target = new THREE.Vector3(0, -1.85, 0.5);
 
   function fitDistance() {
     var aspect = camera.aspect;
@@ -1088,6 +1069,138 @@
   var dragStart = { x: 0, y: 0, time: 0 };
   var moved = 0;
   var pointerId = null;
+
+  // ---------------------------------------------------------------- 左右飞行
+  var move = {
+    direction: 0, // -1 往左，1 往右
+    hover: 0, // 0 站在地上，1 飞起来
+    lift: 0 // 当前离开地面的高度
+  };
+
+  var WALK_SPEED = 3.1;
+  var FLY_LIFT = 0.95;
+  var SICK_SPEED = 0.45;
+
+  var moveLeftBtn = document.getElementById("move-left");
+  var moveRightBtn = document.getElementById("move-right");
+
+  function canMove() {
+    return state.mode !== "egg";
+  }
+
+  function setDirection(dir) {
+    if (!canMove()) {
+      if (dir !== 0) say("我还是一颗蛋，动不了……先做好事让我回来", 3000);
+      return;
+    }
+    move.direction = dir;
+  }
+
+  function bindMoveButton(button, dir) {
+    if (!button) return;
+    var down = function (event) {
+      event.preventDefault();
+      setDirection(dir);
+      button.classList.add("is-held");
+      dismissHint();
+      if (button.setPointerCapture && event.pointerId !== undefined) {
+        try {
+          button.setPointerCapture(event.pointerId);
+        } catch (err) {
+          /* ignore */
+        }
+      }
+    };
+    var up = function (event) {
+      if (event && event.preventDefault) event.preventDefault();
+      if (move.direction === dir) move.direction = 0;
+      button.classList.remove("is-held");
+    };
+
+    button.addEventListener("pointerdown", down);
+    button.addEventListener("pointerup", up);
+    button.addEventListener("pointercancel", up);
+    button.addEventListener("pointerleave", up);
+    button.addEventListener("contextmenu", function (event) {
+      event.preventDefault();
+    });
+  }
+
+  bindMoveButton(moveLeftBtn, -1);
+  bindMoveButton(moveRightBtn, 1);
+
+  // 电脑上也可以用左右方向键
+  window.addEventListener("keydown", function (event) {
+    if (event.key === "ArrowLeft") {
+      setDirection(-1);
+      if (moveLeftBtn) moveLeftBtn.classList.add("is-held");
+      event.preventDefault();
+    } else if (event.key === "ArrowRight") {
+      setDirection(1);
+      if (moveRightBtn) moveRightBtn.classList.add("is-held");
+      event.preventDefault();
+    }
+  });
+
+  window.addEventListener("keyup", function (event) {
+    if (event.key === "ArrowLeft" && move.direction === -1) {
+      move.direction = 0;
+      if (moveLeftBtn) moveLeftBtn.classList.remove("is-held");
+    } else if (event.key === "ArrowRight" && move.direction === 1) {
+      move.direction = 0;
+      if (moveRightBtn) moveRightBtn.classList.remove("is-held");
+    }
+  });
+
+  function updateMovement(dt) {
+    var pressing = move.direction !== 0 && canMove();
+    var speed = WALK_SPEED * (state.mode === "sick" ? SICK_SPEED : 1);
+
+    if (pressing) {
+      var nextX = parrot.position.x + move.direction * speed * dt;
+      var hitEdge = nextX <= WALK_MIN_X || nextX >= WALK_MAX_X;
+      parrot.position.x = clamp(nextX, WALK_MIN_X, WALK_MAX_X);
+      if (hitEdge) move.direction = 0;
+    }
+
+    // 按按钮就飞起来，松开就慢慢落回草地
+    move.hover = pressing ? 1 : 0;
+    var rate = pressing ? 3.6 : 2.4;
+    move.lift = lerp(move.lift, move.hover * FLY_LIFT, clamp(dt * rate, 0, 1));
+
+    // 生病的时候飞得低一点
+    var lift = state.mode === "sick" ? move.lift * 0.55 : move.lift;
+
+    if (pressing || move.lift > 0.04) {
+      // 朝走的方向转身
+      var facing = move.direction !== 0 ? move.direction : parrot.userData.facing || 1;
+      parrot.rotation.y = lerp(parrot.rotation.y, facing > 0 ? 1.25 : -1.25, 0.1);
+      parrot.userData.facing = facing;
+    } else {
+      parrot.rotation.y = lerp(parrot.rotation.y, 0, 0.08);
+    }
+
+    return lift;
+  }
+
+  // 移动 + 起降 + 落地，动画循环和自动测试都用这一份逻辑
+  function stepMovement(dt) {
+    var lift = updateMovement(dt);
+    target.x = lerp(target.x, parrot.position.x, 0.08);
+
+    if (state.actionTimer > 0) {
+      state.actionTimer -= dt;
+      var bounce = Math.max(0, Math.sin(state.actionTimer * 12)) * 0.12;
+      parrot.position.y = GROUND_Y + lift + bounce * (1 - clamp(lift / FLY_LIFT, 0, 1));
+    } else {
+      parrot.position.y = GROUND_Y + lift;
+      state.action = null;
+    }
+
+    eggGroup.position.x = parrot.position.x;
+    eggGroup.position.z = parrot.position.z;
+    return lift;
+  }
 
   canvas.addEventListener("pointerdown", function (event) {
     dragging = true;
@@ -1160,6 +1273,8 @@
   var pointer = new THREE.Vector2();
 
   function handleTap(event) {
+    if (state.mode === "egg") return;
+
     var rect = canvas.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1204,7 +1319,12 @@
 
     // wings
     var flap = 0;
-    if (state.action === "pat" || state.action === "talk") {
+    var flying = move.lift > 0.12;
+    if (flying) {
+      // 飞起来的时候翅膀扇得快一点
+      var flapSpeed = state.mode === "sick" ? 8 : 15;
+      flap = Math.sin(elapsed * flapSpeed) * (state.mode === "sick" ? 0.24 : 0.45);
+    } else if (state.action === "pat" || state.action === "talk") {
       flap = Math.sin(state.actionTimer * 22) * 0.35;
     } else if (!reduceMotion) {
       flap = Math.sin(elapsed * 1.1) * 0.035;
@@ -1228,20 +1348,14 @@
     parrot.rotation.z = lerp(parrot.rotation.z, state.mode === "sick" ? 0.13 : 0, 0.06);
     if (eggGroup.visible) {
       eggGroup.rotation.z = reduceMotion ? 0 : Math.sin(elapsed * 2.4) * 0.05;
-      eggGroup.position.y = 0.78 + (reduceMotion ? 0 : Math.sin(elapsed * 1.8) * 0.03);
+      eggGroup.position.y =
+        GROUND_Y + 0.72 + (reduceMotion ? 0 : Math.sin(elapsed * 1.8) * 0.03);
     }
 
     checkAngerTimer();
 
-    // action hop
-    if (state.actionTimer > 0) {
-      state.actionTimer -= dt;
-      var bounce = Math.max(0, Math.sin(state.actionTimer * 12)) * 0.12;
-      parrot.position.y = 0.12 + bounce;
-    } else {
-      parrot.position.y = lerp(parrot.position.y, 0.12, 0.12);
-      state.action = null;
-    }
+    // 左右飞：按住按钮就飘，松开慢慢落回草地
+    stepMovement(dt);
 
     // grow / shrink smoothly
     var goal = parrot.userData.targetScale || 1;
@@ -1330,6 +1444,29 @@
     },
     startAnger: startAnger,
     calmDown: calmDown,
+    // 测试 / 以后加功能时用
+    press: setDirection,
+    release: function () {
+      move.direction = 0;
+    },
+    // 用固定时间步进推进移动，方便自动测试
+    step: function (dt) {
+      return stepMovement(dt);
+    },
+    getPosition: function () {
+      return {
+        x: parrot.position.x,
+        y: parrot.position.y,
+        lift: move.lift,
+        groundY: GROUND_Y,
+        direction: move.direction,
+        minX: WALK_MIN_X,
+        maxX: WALK_MAX_X
+      };
+    },
+    getEggPosition: function () {
+      return { x: eggGroup.position.x, y: eggGroup.position.y };
+    },
     shiftAnger: function (ms) {
       if (state.angerStartedAt !== null) state.angerStartedAt -= ms;
     },

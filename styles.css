@@ -431,6 +431,62 @@ body {
   background: #fff;
 }
 
+/* ---------- 左右飞行按钮 ---------- */
+
+.move-button {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + 22px);
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  padding: 0;
+  border: 1px solid var(--panel-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--leaf-deep);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 8;
+  transition: transform 120ms ease, background 140ms ease;
+}
+
+.move-button svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.move-left {
+  left: calc(var(--safe-left) + 18px);
+}
+
+.move-right {
+  right: calc(var(--safe-right) + 18px);
+}
+
+.move-button.is-held {
+  transform: scale(0.94);
+  background: var(--leaf);
+  color: #fff;
+}
+
+body.is-egg .move-button {
+  opacity: 0.4;
+}
+
+/* 变成蛋的时候按钮不能再按 */
+body.is-egg .move-button {
+  cursor: not-allowed;
+}
+
 /* ---------- Loading / fallback ---------- */
 
 .loading,
@@ -555,6 +611,26 @@ body {
 
   .anger-panel {
     bottom: calc(var(--safe-bottom) + 168px);
+  }
+
+  /* 手机上把方向按钮抬到面板上方，免得挡住记录按钮 */
+  .move-button {
+    bottom: calc(var(--safe-bottom) + 214px);
+    width: 56px;
+    height: 56px;
+  }
+
+  .move-button svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .move-left {
+    left: calc(var(--safe-left) + 12px);
+  }
+
+  .move-right {
+    right: calc(var(--safe-right) + 12px);
   }
 }
 
