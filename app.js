@@ -277,6 +277,8 @@
   var GROUND_Y = -2.44; // 草地表面，鹦鹉站在这里
   var WALK_MIN_X = -7.6;
   var WALK_MAX_X = 7.6;
+  var WALK_MIN_Z = -5.2;
+  var WALK_MAX_Z = 4.6;
 
   var parrot = new THREE.Group();
   world.add(parrot);
@@ -1337,10 +1339,10 @@
   var moved = 0;
   var pointerId = null;
 
-  // ---------------------------------------------------------------- 左右飞行
+  // ---------------------------------------------------------------- 四方向飞行
   var move = {
-    direction: 0, // -1 往左，1 往右
-    hover: 0, // 0 站在地上，1 飞起来
+    x: 0, // -1 往左，1 往右
+    z: 0, // -1 向前（飞远），1 向后（飞近）
     lift: 0 // 当前离开地面的高度
   };
 
@@ -1348,6 +1350,8 @@
   var FLY_LIFT = 0.95;
   var SICK_SPEED = 0.45;
 
+  var moveForwardBtn = document.getElementById("move-forward");
+  var moveBackBtn = document.getElementById("move-back");
   var moveLeftBtn = document.getElementById("move-left");
   var moveRightBtn = document.getElementById("move-right");
 
@@ -1355,19 +1359,20 @@
     return state.mode !== "egg";
   }
 
-  function setDirection(dir) {
+  function setDirection(axis, value) {
     if (!canMove()) {
-      if (dir !== 0) say("我还是一颗蛋，动不了……先做好事让我回来", 3000);
+      if (value !== 0) say("我还是一颗蛋，动不了……先做好事让我回来", 3000);
       return;
     }
-    move.direction = dir;
+    if (axis === "z") move.z = value;
+    else move.x = value;
   }
 
-  function bindMoveButton(button, dir) {
+  function bindMoveButton(button, axis, value) {
     if (!button) return;
     var down = function (event) {
       event.preventDefault();
-      setDirection(dir);
+      setDirection(axis, value);
       button.classList.add("is-held");
       dismissHint();
       if (button.setPointerCapture && event.pointerId !== undefined) {
@@ -1380,7 +1385,7 @@
     };
     var up = function (event) {
       if (event && event.preventDefault) event.preventDefault();
-      if (move.direction === dir) move.direction = 0;
+      setDirection(axis, 0);
       button.classList.remove("is-held");
     };
 
@@ -1393,41 +1398,56 @@
     });
   }
 
-  bindMoveButton(moveLeftBtn, -1);
-  bindMoveButton(moveRightBtn, 1);
+  bindMoveButton(moveForwardBtn, "z", -1);
+  bindMoveButton(moveBackBtn, "z", 1);
+  bindMoveButton(moveLeftBtn, "x", -1);
+  bindMoveButton(moveRightBtn, "x", 1);
 
-  // 电脑上也可以用左右方向键
+  // 电脑上也可以用四个方向键
+  var keyMap = {
+    ArrowUp: [moveForwardBtn, "z", -1],
+    ArrowDown: [moveBackBtn, "z", 1],
+    ArrowLeft: [moveLeftBtn, "x", -1],
+    ArrowRight: [moveRightBtn, "x", 1]
+  };
+
   window.addEventListener("keydown", function (event) {
-    if (event.key === "ArrowLeft") {
-      setDirection(-1);
-      if (moveLeftBtn) moveLeftBtn.classList.add("is-held");
-      event.preventDefault();
-    } else if (event.key === "ArrowRight") {
-      setDirection(1);
-      if (moveRightBtn) moveRightBtn.classList.add("is-held");
-      event.preventDefault();
-    }
+    var k = keyMap[event.key];
+    if (!k) return;
+    setDirection(k[1], k[2]);
+    if (k[0]) k[0].classList.add("is-held");
+    event.preventDefault();
   });
 
   window.addEventListener("keyup", function (event) {
-    if (event.key === "ArrowLeft" && move.direction === -1) {
-      move.direction = 0;
-      if (moveLeftBtn) moveLeftBtn.classList.remove("is-held");
-    } else if (event.key === "ArrowRight" && move.direction === 1) {
-      move.direction = 0;
-      if (moveRightBtn) moveRightBtn.classList.remove("is-held");
-    }
+    var k = keyMap[event.key];
+    if (!k) return;
+    setDirection(k[1], 0);
+    if (k[0]) k[0].classList.remove("is-held");
   });
 
   function updateMovement(dt) {
-    var pressing = move.direction !== 0 && canMove();
+    var dirX = move.x;
+    var dirZ = move.z;
+    var pressing = (dirX !== 0 || dirZ !== 0) && canMove();
     var speed = WALK_SPEED * (state.mode === "sick" ? SICK_SPEED : 1);
 
     if (pressing) {
-      var nextX = parrot.position.x + move.direction * speed * dt;
-      var hitEdge = nextX <= WALK_MIN_X || nextX >= WALK_MAX_X;
-      parrot.position.x = clamp(nextX, WALK_MIN_X, WALK_MAX_X);
-      if (hitEdge) move.direction = 0;
+      // 斜着飞的时候速度不会变快
+      var len = Math.sqrt(dirX * dirX + dirZ * dirZ) || 1;
+      var step = speed * dt;
+
+      if (dirX !== 0) {
+        var nextX = parrot.position.x + (dirX / len) * step;
+        if (nextX <= WALK_MIN_X || nextX >= WALK_MAX_X) move.x = 0;
+        parrot.position.x = clamp(nextX, WALK_MIN_X, WALK_MAX_X);
+      }
+
+      if (dirZ !== 0) {
+        var nextZ = parrot.position.z + (dirZ / len) * step;
+        if (nextZ <= WALK_MIN_Z || nextZ >= WALK_MAX_Z) move.z = 0;
+        parrot.position.z = clamp(nextZ, WALK_MIN_Z, WALK_MAX_Z);
+      }
     }
 
     // 按按钮就飞起来，松开就慢慢落回草地
@@ -1439,12 +1459,26 @@
     var lift = state.mode === "sick" ? move.lift * 0.55 : move.lift;
 
     if (pressing || move.lift > 0.04) {
-      // 朝走的方向转身
-      var facing = move.direction !== 0 ? move.direction : parrot.userData.facing || 1;
-      parrot.rotation.y = lerp(parrot.rotation.y, facing > 0 ? 1.25 : -1.25, 0.1);
-      parrot.userData.facing = facing;
+      // 朝着飞的方向转身（模型正面朝 +z）
+      var ax = dirX;
+      var az = dirZ;
+      if (ax === 0 && az === 0) {
+        ax = parrot.userData.facingX || 0;
+        az = parrot.userData.facingZ || 1;
+      }
+      var wantY = Math.atan2(ax, az);
+      parrot.userData.facingX = ax;
+      parrot.userData.facingZ = az;
+
+      // 选最近的转向方向，避免转一大圈
+      var diff = wantY - parrot.rotation.y;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      parrot.rotation.y += diff * 0.12;
     } else {
       parrot.rotation.y = lerp(parrot.rotation.y, 0, 0.08);
+      parrot.userData.facingX = 0;
+      parrot.userData.facingZ = 1;
     }
 
     return lift;
@@ -1454,6 +1488,7 @@
   function stepMovement(dt) {
     var lift = updateMovement(dt);
     target.x = lerp(target.x, parrot.position.x, 0.08);
+    target.z = lerp(target.z, parrot.position.z, 0.08);
 
     if (state.actionTimer > 0) {
       state.actionTimer -= dt;
@@ -1889,10 +1924,11 @@
     },
     startAnger: startAnger,
     calmDown: calmDown,
-    // 测试 / 以后加功能时用
+    // 测试 / 以后加功能时用：press("x", -1)、press("z", 1)
     press: setDirection,
     release: function () {
-      move.direction = 0;
+      move.x = 0;
+      move.z = 0;
     },
     // 用固定时间步进推进移动，方便自动测试
     step: function (dt) {
@@ -1920,12 +1956,19 @@
     getPosition: function () {
       return {
         x: parrot.position.x,
+        z: parrot.position.z,
         y: parrot.position.y,
         lift: move.lift,
         groundY: GROUND_Y,
-        direction: move.direction,
+        directionX: move.x,
+        directionZ: move.z,
+        // 兼容旧测试：direction 是左右方向
+        direction: move.x,
         minX: WALK_MIN_X,
-        maxX: WALK_MAX_X
+        maxX: WALK_MAX_X,
+        minZ: WALK_MIN_Z,
+        maxZ: WALK_MAX_Z,
+        rotationY: parrot.rotation.y
       };
     },
     getEggPosition: function () {

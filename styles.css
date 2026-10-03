@@ -474,15 +474,25 @@ body {
   background: #fff;
 }
 
-/* ---------- 左右飞行按钮 ---------- */
+/* ---------- 四个方向的十字方向盘 ---------- */
+
+.dpad {
+  --dpad-btn: 58px;
+  position: absolute;
+  left: calc(var(--safe-left) + 14px);
+  bottom: calc(var(--safe-bottom) + 18px);
+  width: calc(var(--dpad-btn) * 3);
+  height: calc(var(--dpad-btn) * 3);
+  z-index: 8;
+  pointer-events: none;
+}
 
 .move-button {
   position: absolute;
-  bottom: calc(var(--safe-bottom) + 22px);
   display: grid;
   place-items: center;
-  width: 66px;
-  height: 66px;
+  width: var(--dpad-btn);
+  height: var(--dpad-btn);
   padding: 0;
   border: 1px solid var(--panel-line);
   border-radius: 50%;
@@ -493,13 +503,13 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  z-index: 8;
+  pointer-events: auto;
   transition: transform 120ms ease, background 140ms ease;
 }
 
 .move-button svg {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2.4;
@@ -507,12 +517,24 @@ body {
   stroke-linejoin: round;
 }
 
-.move-left {
-  left: calc(var(--safe-left) + 18px);
+.dpad-up {
+  left: var(--dpad-btn);
+  top: 0;
 }
 
-.move-right {
-  right: calc(var(--safe-right) + 18px);
+.dpad-down {
+  left: var(--dpad-btn);
+  bottom: 0;
+}
+
+.dpad-left {
+  left: 0;
+  top: var(--dpad-btn);
+}
+
+.dpad-right {
+  right: 0;
+  top: var(--dpad-btn);
 }
 
 .move-button.is-held {
@@ -523,10 +545,6 @@ body {
 
 body.is-egg .move-button {
   opacity: 0.4;
-}
-
-/* 变成蛋的时候按钮不能再按 */
-body.is-egg .move-button {
   cursor: not-allowed;
 }
 
@@ -656,25 +674,17 @@ body.is-egg .move-button {
     bottom: calc(var(--safe-bottom) + 168px);
   }
 
-  /* 手机上把方向按钮抬到面板上方，免得挡住记录按钮。
-     面板高度由 JS 写进 --dock-height，睡觉面板变高时按钮会自动跟着抬高。 */
-  .move-button {
-    bottom: calc(var(--safe-bottom) + var(--dock-height, 186px) + 28px);
-    width: 56px;
-    height: 56px;
+  /* 手机上把方向盘抬到面板上方，免得挡住记录按钮。
+     面板高度由 JS 写进 --dock-height，睡觉面板变高时它会自动跟着抬高。 */
+  .dpad {
+    --dpad-btn: 48px;
+    left: calc(var(--safe-left) + 10px);
+    bottom: calc(var(--safe-bottom) + var(--dock-height, 186px) + 16px);
   }
 
   .move-button svg {
-    width: 26px;
-    height: 26px;
-  }
-
-  .move-left {
-    left: calc(var(--safe-left) + 12px);
-  }
-
-  .move-right {
-    right: calc(var(--safe-right) + 12px);
+    width: 22px;
+    height: 22px;
   }
 }
 

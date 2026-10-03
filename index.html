@@ -64,16 +64,32 @@
       <p id="speech" class="speech" role="status" aria-live="polite"></p>
       <p id="interaction-hint" class="interaction-hint">点一点小鹦鹉，陪陪它</p>
 
-      <button id="move-left" class="move-button move-left" type="button" aria-label="向左飞">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 5 8 12l7 7"></path>
-        </svg>
-      </button>
-      <button id="move-right" class="move-button move-right" type="button" aria-label="向右飞">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m9 5 7 7-7 7"></path>
-        </svg>
-      </button>
+      <div class="dpad" role="group" aria-label="带乐乐飞">
+        <button id="move-forward" class="move-button dpad-up" type="button" aria-label="向前飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 19V5"></path>
+            <path d="m6 11 6-6 6 6"></path>
+          </svg>
+        </button>
+        <button id="move-left" class="move-button dpad-left" type="button" aria-label="向左飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 12H5"></path>
+            <path d="m11 6-6 6 6 6"></path>
+          </svg>
+        </button>
+        <button id="move-right" class="move-button dpad-right" type="button" aria-label="向右飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m13 6 6 6-6 6"></path>
+          </svg>
+        </button>
+        <button id="move-back" class="move-button dpad-down" type="button" aria-label="向后飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="m6 13 6 6 6-6"></path>
+          </svg>
+        </button>
+      </div>
 
       <section id="anger-panel" class="anger-panel" hidden aria-live="polite">
         <div class="anger-top">
