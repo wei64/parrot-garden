@@ -460,6 +460,168 @@
     eSpot.scale.set(1, 0.8, 0.4);
   }
 
+  // ---------------------------------------------------------------- 小池塘
+  // 池塘固定在草地上（不跟着乐乐走），乐乐飞远了就看不见它
+  var POND = { x: -3.05, z: -2.15, radius: 1.45 };
+  var MAX_FISH = 9;
+
+  var pondGroup = new THREE.Group();
+  pondGroup.position.set(POND.x, GROUND_Y + 0.015, POND.z);
+  world.add(pondGroup);
+
+  // 池边（一圈泥土）
+  var pondRim = mesh(
+    new THREE.CircleGeometry(POND.radius * 1.18, 40),
+    mat(0x7a6f4e, { roughness: 1 }),
+    pondGroup
+  );
+  pondRim.rotation.x = -Math.PI / 2;
+  pondRim.position.y = -0.012;
+  pondRim.castShadow = false;
+
+  // 水面：鱼越多，水越亮
+  var waterMat = new THREE.MeshStandardMaterial({
+    color: 0x4ea6d2,
+    roughness: 0.32,
+    metalness: 0.02,
+    transparent: true,
+    opacity: 0.95,
+    emissive: 0x1d5f86,
+    emissiveIntensity: 0.12
+  });
+  var water = mesh(new THREE.CircleGeometry(POND.radius, 40), waterMat, pondGroup);
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = 0.006;
+  water.castShadow = false;
+
+  // 荷叶
+  var lilyMat = mat(0x5fae66, { roughness: 0.85 });
+  var lilySpots = [
+    [0.62, 0.2, 0.34],
+    [-0.5, 0.72, 0.27],
+    [-0.72, -0.5, 0.3],
+    [0.34, -0.78, 0.24]
+  ];
+  for (var lp = 0; lp < lilySpots.length; lp++) {
+    var lily = mesh(
+      new THREE.CircleGeometry(lilySpots[lp][2], 18),
+      lilyMat,
+      pondGroup
+    );
+    lily.rotation.x = -Math.PI / 2;
+    lily.position.set(lilySpots[lp][0], 0.02, lilySpots[lp][1]);
+    lily.castShadow = false;
+  }
+
+  // 小鱼
+  var fishBodyMat = mat(0xf3a13c, { roughness: 0.42 });
+  var fishTailMat = mat(0xdd8324, { roughness: 0.5 });
+  var fishes = [];
+
+  for (var fi = 0; fi < MAX_FISH; fi++) {
+    var fish = new THREE.Group();
+
+    var fishBody = sphere(0.135, fishBodyMat, fish, 16);
+    fishBody.scale.set(1.45, 0.82, 0.62);
+    fishBody.castShadow = false;
+
+    var fishTail = mesh(new THREE.ConeGeometry(0.09, 0.2, 4), fishTailMat, fish);
+    fishTail.rotation.z = Math.PI / 2;
+    fishTail.position.set(-0.22, 0, 0);
+    fishTail.scale.set(1, 1, 0.55);
+    fishTail.castShadow = false;
+
+    var fishEye = sphere(
+      0.032,
+      new THREE.MeshBasicMaterial({ color: 0x2b3630 }),
+      fish,
+      8
+    );
+    fishEye.position.set(0.15, 0.045, 0.075);
+    fishEye.castShadow = false;
+
+    fish.position.set(POND.x, GROUND_Y + 0.16, POND.z);
+    world.add(fish);
+
+    var fishData = {
+      group: fish,
+      angle: (fi / MAX_FISH) * Math.PI * 2,
+      speed: 0.5 + (fi % 3) * 0.13,
+      radius: 0.48 + (fi % 4) * 0.22,
+      phase: fi * 1.7,
+      dragging: false
+    };
+    fish.userData.fish = fishData;
+    fishes.push(fishData);
+    fish.visible = false;
+  }
+
+  function currentLevelIndex() {
+    return levelIndexFromScore(state.score);
+  }
+
+  // 池塘里还剩几条鱼（已经被吃掉的不会回来）
+  function pondFishCount() {
+    return Math.round(clamp(state.fishEarned - state.fishEaten, 0, MAX_FISH));
+  }
+
+  // 现在能看到几条：颜色退回去就躲起来，生病或变成蛋全部躲起来
+  function visibleFishCount() {
+    if (state.reviving || state.mode !== "healthy") return 0;
+    return Math.min(pondFishCount(), currentLevelIndex());
+  }
+
+  function syncFishEarned() {
+    var lv = currentLevelIndex();
+    if (lv > state.fishEarned) state.fishEarned = lv;
+  }
+
+  var lastFishCount = -1;
+  var waterBase = new THREE.Color(0x4ea6d2);
+  var waterBright = new THREE.Color(0x9fdcf5);
+
+  function updatePond(dt) {
+    var count = visibleFishCount();
+
+    for (var i = 0; i < fishes.length; i++) {
+      var f = fishes[i];
+      var shouldShow = i < count;
+
+      if (!shouldShow && !f.dragging) {
+        f.group.visible = false;
+        continue;
+      }
+      if (f.dragging) {
+        f.group.visible = true;
+        continue;
+      }
+
+      f.group.visible = true;
+      f.angle += f.speed * dt;
+
+      var px = POND.x + Math.cos(f.angle) * f.radius;
+      var pz = POND.z + Math.sin(f.angle) * f.radius * 0.62;
+      var py = GROUND_Y + 0.16 + Math.sin(elapsed * 2.2 + f.phase) * 0.022;
+      f.group.position.set(px, py, pz);
+
+      // 朝着游动的方向
+      var vx = -Math.sin(f.angle);
+      var vz = 0.62 * Math.cos(f.angle);
+      f.group.rotation.y = Math.atan2(-vz, vx);
+    }
+
+    // 鱼越多，池水越亮
+    var ratio = clamp(count / MAX_FISH, 0, 1);
+    waterMat.color.copy(waterBase).lerp(waterBright, ratio * 0.45);
+    waterMat.emissiveIntensity = 0.1 + ratio * 0.26;
+
+    if (count > lastFishCount && lastFishCount >= 0 && count > 0) {
+      say("池塘里多了一条小鱼！", 2600);
+      chirp([660, 880]);
+    }
+    lastFishCount = count;
+  }
+
   // ---------------------------------------------------------------- particles
   var particles = [];
   var heartGeo = new THREE.SphereGeometry(0.1, 10, 8);
@@ -561,6 +723,8 @@
     reviving: false,
     reviveProgress: 0,
     angerStartedAt: null,
+    fishEarned: 0,
+    fishEaten: 0,
     pats: 0,
     lastInteraction: 0,
     actionTimer: 0,
@@ -631,7 +795,9 @@
           score: state.score,
           mode: state.mode,
           reviving: state.reviving,
-          reviveProgress: state.reviveProgress
+          reviveProgress: state.reviveProgress,
+          fishEarned: state.fishEarned,
+          fishEaten: state.fishEaten
         })
       );
     } catch (err) {
@@ -651,6 +817,12 @@
       state.reviving = !!data.reviving;
       if (typeof data.reviveProgress === "number") {
         state.reviveProgress = clamp(data.reviveProgress, 0, REVIVE_DONE_AT);
+      }
+      if (typeof data.fishEarned === "number") {
+        state.fishEarned = Math.round(clamp(data.fishEarned, 0, MAX_FISH));
+      }
+      if (typeof data.fishEaten === "number") {
+        state.fishEaten = Math.round(clamp(data.fishEaten, 0, MAX_FISH));
       }
     } catch (err) {
       /* 数据坏了就从头开始 */
@@ -736,7 +908,9 @@
       score: state.score,
       mode: state.mode,
       reviving: state.reviving,
-      reviveProgress: state.reviveProgress
+      reviveProgress: state.reviveProgress,
+      fishEarned: state.fishEarned,
+      fishEaten: state.fishEaten
     });
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
     updateUndoButton();
@@ -754,6 +928,8 @@
     state.mode = snap.mode;
     state.reviving = snap.reviving;
     state.reviveProgress = snap.reviveProgress;
+    if (typeof snap.fishEarned === "number") state.fishEarned = snap.fishEarned;
+    if (typeof snap.fishEaten === "number") state.fishEaten = snap.fishEaten;
 
     save();
     applyAppearance();
@@ -805,6 +981,7 @@
 
     if (!opts.skipUndo) pushUndo();
     state.score += delta;
+    syncFishEarned();
 
     if (state.score <= EGG_SCORE) {
       state.score = EGG_SCORE;
@@ -1293,6 +1470,13 @@
   }
 
   canvas.addEventListener("pointerdown", function (event) {
+    // 先看看有没有点中小鱼
+    var hitFish = pickFish(event);
+    if (hitFish) {
+      beginFishDrag(hitFish, event);
+      return;
+    }
+
     dragging = true;
     moved = 0;
     pointerId = event.pointerId;
@@ -1310,6 +1494,11 @@
   });
 
   canvas.addEventListener("pointermove", function (event) {
+    if (dragFish) {
+      moveFishDrag(event);
+      return;
+    }
+
     if (!dragging) return;
     var dx = event.clientX - dragStart.x;
     var dy = event.clientY - dragStart.y;
@@ -1324,6 +1513,19 @@
   });
 
   function endDrag(event) {
+    if (dragFish) {
+      if (canvas.releasePointerCapture && pointerId !== null) {
+        try {
+          canvas.releasePointerCapture(pointerId);
+        } catch (err) {
+          /* ignore */
+        }
+      }
+      pointerId = null;
+      endFishDrag();
+      return;
+    }
+
     if (!dragging) return;
     dragging = false;
     canvas.classList.remove("is-dragging");
@@ -1344,6 +1546,12 @@
 
   canvas.addEventListener("pointerup", endDrag);
   canvas.addEventListener("pointercancel", function () {
+    if (dragFish) {
+      var fish = dragFish;
+      dragFish = null;
+      fish.dragging = false;
+      fish.group.position.set(POND.x, GROUND_Y + 0.16, POND.z);
+    }
     dragging = false;
     canvas.classList.remove("is-dragging");
     pointerId = null;
@@ -1361,6 +1569,123 @@
 
   var raycaster = new THREE.Raycaster();
   var pointer = new THREE.Vector2();
+
+  // ---------------------------------------------------------------- 拖鱼喂乐乐
+  var dragFish = null;
+  var dragPlane = new THREE.Plane();
+  var dragHit = new THREE.Vector3();
+  var cameraDir = new THREE.Vector3();
+
+  function updatePointerFromEvent(event) {
+    var rect = canvas.getBoundingClientRect();
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  function pickFish(event) {
+    if (visibleFishCount() <= 0) return null;
+
+    updatePointerFromEvent(event);
+    raycaster.setFromCamera(pointer, camera);
+
+    var groups = [];
+    for (var i = 0; i < fishes.length; i++) {
+      if (fishes[i].group.visible) groups.push(fishes[i].group);
+    }
+    if (!groups.length) return null;
+
+    var hits = raycaster.intersectObjects(groups, true);
+    if (!hits.length) return null;
+
+    var obj = hits[0].object;
+    while (obj && !obj.userData.fish) obj = obj.parent;
+    return obj ? obj.userData.fish : null;
+  }
+
+  function beginFishDrag(fish, event) {
+    dragFish = fish;
+    fish.dragging = true;
+    fish.group.visible = true;
+
+    camera.getWorldDirection(cameraDir);
+    dragPlane.setFromNormalAndCoplanarPoint(cameraDir, fish.group.position);
+
+    pointerId = event.pointerId;
+    if (canvas.setPointerCapture) {
+      try {
+        canvas.setPointerCapture(event.pointerId);
+      } catch (err) {
+        /* ignore */
+      }
+    }
+    dismissHint();
+    state.lastInteraction = performance.now();
+  }
+
+  function moveFishDrag(event) {
+    if (!dragFish) return;
+    updatePointerFromEvent(event);
+    raycaster.setFromCamera(pointer, camera);
+    if (raycaster.ray.intersectPlane(dragPlane, dragHit)) {
+      dragFish.group.position.copy(dragHit);
+      dragFish.group.rotation.y = 0;
+    }
+  }
+
+  function toScreenPoint(v3) {
+    var p = v3.clone().project(camera);
+    return {
+      x: (p.x + 1) * 0.5 * canvas.clientWidth,
+      y: (-p.y + 1) * 0.5 * canvas.clientHeight
+    };
+  }
+
+  function endFishDrag() {
+    var fish = dragFish;
+    dragFish = null;
+    if (!fish) return;
+
+    fish.dragging = false;
+
+    var beakPos = new THREE.Vector3();
+    beakGroup.getWorldPosition(beakPos);
+
+    var beakScreen = toScreenPoint(beakPos);
+    var fishScreen = toScreenPoint(fish.group.position);
+    var dx = beakScreen.x - fishScreen.x;
+    var dy = beakScreen.y - fishScreen.y;
+    var screenDist = Math.sqrt(dx * dx + dy * dy);
+    var worldDist = fish.group.position.distanceTo(beakPos);
+
+    // 拖到嘴边（屏幕上看够近，或者世界里够近）就算喂进去
+    if (screenDist < 120 || worldDist < 1.5) {
+      feedFish(fish);
+    } else {
+      say("小鱼游回池塘啦", 2200);
+      fish.group.position.set(POND.x, GROUND_Y + 0.16, POND.z);
+    }
+  }
+
+  function feedFish(fish) {
+    if (visibleFishCount() <= 0) return;
+
+    pushUndo();
+    state.fishEaten = Math.round(clamp(state.fishEaten + 1, 0, MAX_FISH));
+
+    // 把这条鱼挪到队尾，它就会随着鱼数减少而藏起来
+    var idx = fishes.indexOf(fish);
+    if (idx >= 0) {
+      fishes.splice(idx, 1);
+      fishes.push(fish);
+    }
+    fish.group.visible = false;
+    fish.group.position.set(POND.x, GROUND_Y + 0.16, POND.z);
+
+    changeScore(1, { skipUndo: true, silent: true });
+    say("好吃！谢谢你喂我", 2800);
+    spawn("heart", 7);
+    chirp([600, 780, 920]);
+  }
 
   function handleTap(event) {
     if (state.mode === "egg") return;
@@ -1446,6 +1771,9 @@
 
     // 左右飞：按住按钮就飘，松开慢慢落回草地
     stepMovement(dt);
+
+    // 池塘里的小鱼游来游去
+    updatePond(dt);
 
     // grow / shrink smoothly
     var goal = parrot.userData.targetScale || 1;
@@ -1550,6 +1878,11 @@
       } else {
         state.mode = "healthy";
       }
+
+      // 硬重置时池塘也回到这个分数应有的样子
+      state.fishEarned = currentLevelIndex();
+      state.fishEaten = 0;
+
       save();
       applyAppearance();
       renderHud();
@@ -1564,6 +1897,25 @@
     // 用固定时间步进推进移动，方便自动测试
     step: function (dt) {
       return stepMovement(dt);
+    },
+    // 池塘相关（测试 / 以后加功能时用）
+    getFish: function () {
+      return {
+        earned: state.fishEarned,
+        eaten: state.fishEaten,
+        total: pondFishCount(),
+        visible: visibleFishCount(),
+        level: currentLevelIndex()
+      };
+    },
+    // 直接把第 index 条可见的鱼喂给乐乐（模拟拖到嘴边）
+    feedFishAt: function (index) {
+      var count = visibleFishCount();
+      if (count <= 0) return false;
+      var i = typeof index === "number" ? index : 0;
+      if (i < 0 || i >= count) return false;
+      feedFish(fishes[i]);
+      return true;
     },
     getPosition: function () {
       return {
