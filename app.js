@@ -463,8 +463,9 @@
   }
 
   // ---------------------------------------------------------------- 小池塘
-  // 池塘固定在草地上（不跟着乐乐走），乐乐飞远了就看不见它
-  var POND = { x: -3.05, z: -2.15, radius: 1.45 };
+  // 池塘固定在草地上（不跟着乐乐走），乐乐飞远了就看不见它。
+  // 位置放得离乐乐远一点，免得乐乐的身体挡住池塘里的鱼。
+  var POND = { x: -4.35, z: -2.3, radius: 1.45 };
   var MAX_FISH = 9;
 
   var pondGroup = new THREE.Group();
@@ -523,11 +524,11 @@
   for (var fi = 0; fi < MAX_FISH; fi++) {
     var fish = new THREE.Group();
 
-    var fishBody = sphere(0.135, fishBodyMat, fish, 16);
+    var fishBody = sphere(0.155, fishBodyMat, fish, 16);
     fishBody.scale.set(1.45, 0.82, 0.62);
     fishBody.castShadow = false;
 
-    var fishTail = mesh(new THREE.ConeGeometry(0.09, 0.2, 4), fishTailMat, fish);
+    var fishTail = mesh(new THREE.ConeGeometry(0.1, 0.22, 4), fishTailMat, fish);
     fishTail.rotation.z = Math.PI / 2;
     fishTail.position.set(-0.22, 0, 0);
     fishTail.scale.set(1, 1, 0.55);
@@ -549,7 +550,8 @@
       group: fish,
       angle: (fi / MAX_FISH) * Math.PI * 2,
       speed: 0.5 + (fi % 3) * 0.13,
-      radius: 0.48 + (fi % 4) * 0.22,
+      // 每条鱼都有自己的轨道，鱼多了也不会挤成一堆
+      radius: 0.32 + fi * 0.1,
       phase: fi * 1.7,
       dragging: false
     };
@@ -562,25 +564,36 @@
     return levelIndexFromScore(state.score);
   }
 
-  // 池塘里还剩几条鱼（已经被吃掉的不会回来）
+  // 池塘里应该有几条鱼 = 现在这个颜色赚到的鱼 - 已经喂掉的鱼。
+  // 这里直接从分数推算，不再单独存一份“已赚到多少条”，
+  // 免得旧存档里的数字过期（例如 30 分只记着 2 条）。
   function pondFishCount() {
-    return Math.round(clamp(state.fishEarned - state.fishEaten, 0, MAX_FISH));
+    var earned = currentLevelIndex();
+    return Math.round(clamp(earned - state.fishEaten, 0, MAX_FISH));
   }
 
   // 现在能看到几条：颜色退回去就躲起来，生病或变成蛋全部躲起来
   function visibleFishCount() {
     if (state.reviving || state.mode !== "healthy") return 0;
-    return Math.min(pondFishCount(), currentLevelIndex());
-  }
-
-  function syncFishEarned() {
-    var lv = currentLevelIndex();
-    if (lv > state.fishEarned) state.fishEarned = lv;
+    return pondFishCount();
   }
 
   var lastFishCount = -1;
   var waterBase = new THREE.Color(0x4ea6d2);
   var waterBright = new THREE.Color(0x9fdcf5);
+
+  // 在左上角显示池塘里现在有几条鱼，方便核对
+  function updatePondHud() {
+    var el = document.getElementById("pond-hint");
+    if (!el) return;
+
+    var visible = visibleFishCount();
+    if (state.reviving || state.mode !== "healthy") {
+      el.textContent = "池塘 " + pondFishCount() + " 条小鱼（躲起来了）";
+    } else {
+      el.textContent = "池塘 " + visible + " 条小鱼";
+    }
+  }
 
   function updatePond(dt) {
     var count = visibleFishCount();
@@ -621,7 +634,10 @@
       say("池塘里多了一条小鱼！", 2600);
       chirp([660, 880]);
     }
-    lastFishCount = count;
+    if (count !== lastFishCount) {
+      lastFishCount = count;
+      updatePondHud();
+    }
   }
 
   // ---------------------------------------------------------------- particles
@@ -725,7 +741,7 @@
     reviving: false,
     reviveProgress: 0,
     angerStartedAt: null,
-    fishEarned: 0,
+    // 只记“已经喂掉几条鱼”，能赚到几条直接从分数算
     fishEaten: 0,
     pats: 0,
     lastInteraction: 0,
@@ -798,7 +814,6 @@
           mode: state.mode,
           reviving: state.reviving,
           reviveProgress: state.reviveProgress,
-          fishEarned: state.fishEarned,
           fishEaten: state.fishEaten
         })
       );
@@ -820,9 +835,8 @@
       if (typeof data.reviveProgress === "number") {
         state.reviveProgress = clamp(data.reviveProgress, 0, REVIVE_DONE_AT);
       }
-      if (typeof data.fishEarned === "number") {
-        state.fishEarned = Math.round(clamp(data.fishEarned, 0, MAX_FISH));
-      }
+      // 旧存档里的 fishEarned 不再使用：能赚到几条鱼直接从分数算，
+      // 这样 30 分就一定对应 3 条鱼，不会因为旧数据而过期。
       if (typeof data.fishEaten === "number") {
         state.fishEaten = Math.round(clamp(data.fishEaten, 0, MAX_FISH));
       }
@@ -872,6 +886,7 @@
       fill.style.width = ((state.reviveProgress / REVIVE_DONE_AT) * 100).toFixed(1) + "%";
       hint.textContent =
         state.mode === "egg" ? "加满 10 分，我就先孵出来" : "再加满 10 分，我就完全好了";
+      updatePondHud();
       return;
     }
 
@@ -882,6 +897,7 @@
       scoreEl.textContent = state.score + " 分";
       fill.style.width = "0%";
       hint.textContent = "回到 0 分，我就好了";
+      updatePondHud();
       return;
     }
 
@@ -894,6 +910,7 @@
       state.score <= 0
         ? "做一件好事，我就会长大"
         : "再攒 " + (SCORE_PER_LEVEL - within) + " 分就换颜色";
+    updatePondHud();
   }
 
   // ---------------------------------------------------------------- 点错了，加回来
@@ -911,7 +928,6 @@
       mode: state.mode,
       reviving: state.reviving,
       reviveProgress: state.reviveProgress,
-      fishEarned: state.fishEarned,
       fishEaten: state.fishEaten
     });
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
@@ -930,7 +946,6 @@
     state.mode = snap.mode;
     state.reviving = snap.reviving;
     state.reviveProgress = snap.reviveProgress;
-    if (typeof snap.fishEarned === "number") state.fishEarned = snap.fishEarned;
     if (typeof snap.fishEaten === "number") state.fishEaten = snap.fishEaten;
 
     save();
@@ -983,7 +998,6 @@
 
     if (!opts.skipUndo) pushUndo();
     state.score += delta;
-    syncFishEarned();
 
     if (state.score <= EGG_SCORE) {
       state.score = EGG_SCORE;
@@ -1505,6 +1519,10 @@
   }
 
   canvas.addEventListener("pointerdown", function (event) {
+    // 已经有一根手指在拖鱼了，就不理会第二根手指，
+    // 免得一根手指喂掉两条鱼
+    if (dragFish) return;
+
     // 先看看有没有点中小鱼
     var hitFish = pickFish(event);
     if (hitFish) {
@@ -1638,6 +1656,12 @@
   }
 
   function beginFishDrag(fish, event) {
+    // 一条鱼只能被拖一次：万一有残留的拖动状态，先清干净
+    if (dragFish && dragFish !== fish) {
+      dragFish.dragging = false;
+      dragFish.group.position.set(POND.x, GROUND_Y + 0.16, POND.z);
+    }
+
     dragFish = fish;
     fish.dragging = true;
     fish.group.visible = true;
@@ -1707,12 +1731,9 @@
     pushUndo();
     state.fishEaten = Math.round(clamp(state.fishEaten + 1, 0, MAX_FISH));
 
-    // 把这条鱼挪到队尾，它就会随着鱼数减少而藏起来
-    var idx = fishes.indexOf(fish);
-    if (idx >= 0) {
-      fishes.splice(idx, 1);
-      fishes.push(fish);
-    }
+    // 鱼数直接按分数算，所以喂掉一条之后，池塘自然就少显示一条，
+    // 不需要在这里挪动鱼的顺序。
+    fish.dragging = false;
     fish.group.visible = false;
     fish.group.position.set(POND.x, GROUND_Y + 0.16, POND.z);
 
@@ -1720,6 +1741,7 @@
     say("好吃！谢谢你喂我", 2800);
     spawn("heart", 7);
     chirp([600, 780, 920]);
+    updatePondHud();
   }
 
   function handleTap(event) {
@@ -1914,8 +1936,7 @@
         state.mode = "healthy";
       }
 
-      // 硬重置时池塘也回到这个分数应有的样子
-      state.fishEarned = currentLevelIndex();
+      // 硬重置时池塘也回到这个分数应有的样子（鱼数由分数推算）
       state.fishEaten = 0;
 
       save();
@@ -1937,7 +1958,8 @@
     // 池塘相关（测试 / 以后加功能时用）
     getFish: function () {
       return {
-        earned: state.fishEarned,
+        // earned 表示当前颜色应该有的鱼数（由分数推算）
+        earned: currentLevelIndex(),
         eaten: state.fishEaten,
         total: pondFishCount(),
         visible: visibleFishCount(),

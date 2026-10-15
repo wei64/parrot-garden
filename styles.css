@@ -159,6 +159,13 @@ body {
   color: var(--ink-soft);
 }
 
+.pond-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #2f7fa8;
+}
+
 .revive-box {
   display: none;
 }
