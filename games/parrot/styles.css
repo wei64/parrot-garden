@@ -170,6 +170,45 @@ body {
   display: none;
 }
 
+.hud-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-to-lobby {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 14px 0 11px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  pointer-events: auto;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.back-to-lobby:active {
+  transform: scale(0.94);
+}
+
+.back-to-lobby svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .icon-button {
   flex: none;
   display: grid;
@@ -639,8 +678,24 @@ body.is-egg .move-button {
 @media (max-width: 420px) {
   .pet-status {
     min-width: 0;
-    max-width: 66vw;
+    max-width: 58vw;
     padding: 9px 10px;
+  }
+
+  /* 窄屏上"大厅"只留箭头图标，给状态卡让出宽度 */
+  .hud-actions {
+    gap: 6px;
+  }
+
+  .back-to-lobby {
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .back-to-lobby span {
+    display: none;
   }
 
   #pet-name {

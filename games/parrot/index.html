@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#bfe8ff" />
+    <meta name="description" content="一只会陪你管理情绪和学习的小鹦鹉。" />
+    <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+    <title>小鹦鹉 · 成长花园</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="scene" aria-label="3D 小鹦鹉"></canvas>
+
+      <div id="loading" class="loading" role="status">
+        <div class="loading-bird" aria-hidden="true"></div>
+        <p>小鹦鹉正在飞来...</p>
+      </div>
+
+      <div id="fallback" class="fallback" hidden>
+        <h2>小鹦鹉飞不动了</h2>
+        <p>这个浏览器好像打不开 3D。换一个浏览器，或者用手机、平板再试试。</p>
+      </div>
+
+      <header class="hud">
+        <section class="pet-status" aria-label="小鹦鹉状态">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div class="status-copy">
+            <p class="eyebrow">我的小鹦鹉</p>
+            <h1 id="pet-name">乐乐</h1>
+
+            <div class="growth-row">
+              <span id="level-text">白色</span>
+              <strong id="score-text">0 分</strong>
+            </div>
+            <div class="growth-track" aria-hidden="true">
+              <div id="growth-fill" class="growth-fill"></div>
+            </div>
+            <p id="growth-hint" class="growth-hint">做一件好事，我就会长大</p>
+            <p id="pond-hint" class="pond-hint">池塘 0 条小鱼</p>
+          </div>
+        </section>
+
+        <div class="hud-actions">
+          <a class="back-to-lobby" href="../../index.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19 12H5"></path>
+              <path d="m11 6-6 6 6 6"></path>
+            </svg>
+            <span>大厅</span>
+          </a>
+
+          <button
+            id="sound-toggle"
+            class="icon-button"
+            type="button"
+            aria-label="关闭声音"
+            aria-pressed="true"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-on">
+              <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+              <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+              <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-off">
+              <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
+              <path d="m16 9 5 6"></path>
+              <path d="m21 9-5 6"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <p id="speech" class="speech" role="status" aria-live="polite"></p>
+      <p id="interaction-hint" class="interaction-hint">点一点小鹦鹉，陪陪它</p>
+
+      <div class="dpad" role="group" aria-label="带乐乐飞">
+        <button id="move-forward" class="move-button dpad-up" type="button" aria-label="向前飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 19V5"></path>
+            <path d="m6 11 6-6 6 6"></path>
+          </svg>
+        </button>
+        <button id="move-left" class="move-button dpad-left" type="button" aria-label="向左飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 12H5"></path>
+            <path d="m11 6-6 6 6 6"></path>
+          </svg>
+        </button>
+        <button id="move-right" class="move-button dpad-right" type="button" aria-label="向右飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m13 6 6 6-6 6"></path>
+          </svg>
+        </button>
+        <button id="move-back" class="move-button dpad-down" type="button" aria-label="向后飞">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="m6 13 6 6 6-6"></path>
+          </svg>
+        </button>
+      </div>
+
+      <section id="anger-panel" class="anger-panel" hidden aria-live="polite">
+        <div class="anger-top">
+          <span class="anger-label">深呼吸</span>
+          <strong id="anger-time">0:00</strong>
+        </div>
+        <p id="anger-hint" class="anger-hint">5 分钟内平静下来，我就会变回来</p>
+        <button id="calm-button" class="calm-button" type="button">我平静了</button>
+      </section>
+
+      <footer class="dock" aria-label="和小鹦鹉一起记录">
+        <div class="dock-tabs" role="tablist" aria-label="切换面板">
+          <button
+            class="dock-tab is-active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-tab="score"
+          >
+            记录
+          </button>
+          <button
+            class="dock-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-tab="sleep"
+          >
+            睡觉
+          </button>
+          <button
+            class="dock-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-tab="care"
+          >
+            照顾
+          </button>
+        </div>
+
+        <div class="dock-panel" data-panel="score">
+          <button class="score-button is-bad" type="button" data-action="angry">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path>
+            </svg>
+            <span>我生气了</span>
+          </button>
+
+          <button class="score-button is-good" type="button" data-action="calm">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"></path>
+              <path d="m8.5 12 2.5 2.5 4.5-5"></path>
+            </svg>
+            <span>我平静了</span>
+          </button>
+
+          <button class="score-button is-good" type="button" data-action="homework-done">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
+              <path d="m8.5 12 2.5 2.5 5-5.5"></path>
+            </svg>
+            <span>作业完成</span>
+          </button>
+
+          <button class="score-button is-bad" type="button" data-action="homework-missed">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
+              <path d="m9 10 5 5"></path>
+              <path d="m14 10-5 5"></path>
+            </svg>
+            <span>作业没完成</span>
+          </button>
+
+          <button class="score-button is-good" type="button" data-action="talk-happy">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5.5A7 7 0 0 1 11 4h2a7 7 0 0 1 7 7Z"></path>
+              <path d="M9 11h.01"></path>
+              <path d="M15 11h.01"></path>
+              <path d="M9.5 14c1.5 1.5 3.5 1.5 5 0"></path>
+            </svg>
+            <span>商量变开心</span>
+          </button>
+
+          <button class="score-button is-bad" type="button" data-action="talk-sad">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5.5A7 7 0 0 1 11 4h2a7 7 0 0 1 7 7Z"></path>
+              <path d="M9 11h.01"></path>
+              <path d="M15 11h.01"></path>
+              <path d="M9.5 15c1.5-1.5 3.5-1.5 5 0"></path>
+            </svg>
+            <span>商量变伤心</span>
+          </button>
+        </div>
+
+        <div class="dock-panel" data-panel="sleep" hidden>
+          <button class="score-button is-bad" type="button" data-action="sleep-drag">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"></path>
+              <path d="M12 7.5V12l3 2"></path>
+            </svg>
+            <span>睡前事情拖拉</span>
+          </button>
+
+          <button class="score-button is-bad" type="button" data-action="sleep-wake">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 10.5 12 3l9 7.5"></path>
+              <path d="M5 9.5V20h14V9.5"></path>
+              <path d="M9 20v-5h6v5"></path>
+            </svg>
+            <span>半夜醒来</span>
+          </button>
+
+          <button class="score-button is-bad" type="button" data-action="sleep-chat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 10a6 6 0 0 1-6 6H8l-4 3v-5.5A6 6 0 0 1 10 4h4a6 6 0 0 1 6 6Z"></path>
+              <path d="M9 10h.01"></path>
+              <path d="M12 13h.01"></path>
+              <path d="M15 10h.01"></path>
+            </svg>
+            <span>半夜和妹妹聊天</span>
+          </button>
+
+          <button class="score-button is-good" type="button" data-action="sleep-good">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"></path>
+              <path d="m16.5 7 .9 1.9 2.1.3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2-1.5-1.4 2.1-.3Z"></path>
+            </svg>
+            <span>睡得香</span>
+          </button>
+
+          <button id="undo-button" class="undo-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 7H5V3"></path>
+              <path d="M5 7a8 8 0 1 1-1 7"></path>
+            </svg>
+            <span>点错了，加回来</span>
+          </button>
+        </div>
+
+        <div class="dock-panel" data-panel="care" hidden>
+          <button class="care-button" type="button" data-action="pat">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 11V5.5a1.5 1.5 0 0 1 3 0V11"></path>
+              <path d="M11 10V4.5a1.5 1.5 0 0 1 3 0V10"></path>
+              <path d="M14 10V6a1.5 1.5 0 0 1 3 0v5"></path>
+              <path d="M8 10.5 6.8 9.3a1.5 1.5 0 0 0-2.3 1.9L7 16a6 6 0 0 0 5.2 3H13a6 6 0 0 0 6-6V9a1.5 1.5 0 0 0-3 0"></path>
+            </svg>
+            <span>摸摸头</span>
+          </button>
+
+          <button class="care-button" type="button" data-action="brush">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m14.5 4.5 5 5"></path>
+              <path d="m4 20 10.5-10.5"></path>
+              <path d="M11 6.5 15.5 2l6.5 6.5-4.5 4.5"></path>
+              <path d="m4 20 2 .5.5-2"></path>
+            </svg>
+            <span>梳梳毛</span>
+          </button>
+
+          <button class="care-button" type="button" data-action="feed">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 11h14l-1.3 9H6.3L5 11Z"></path>
+              <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
+              <path d="M9 15h6"></path>
+            </svg>
+            <span>喂一口</span>
+          </button>
+
+          <button class="care-button" type="button" data-action="talk">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 11a7 7 0 0 1-7 7H8l-4 3v-5.5A7 7 0 0 1 11 4h2a7 7 0 0 1 7 7Z"></path>
+              <path d="M9 11h.01"></path>
+              <path d="M13 11h.01"></path>
+              <path d="M17 11h.01"></path>
+            </svg>
+            <span>叫一声</span>
+          </button>
+        </div>
+      </footer>
+    </main>
+
+    <script src="../../vendor/three.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
