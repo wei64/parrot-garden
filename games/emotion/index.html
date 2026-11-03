@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>情绪小管家</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="game">
+
+  <header class="topbar">
+    <div class="title-wrap">
+      <h1>情绪小管家<span class="dot">。</span></h1>
+      <p class="subtitle">点一点天空里的小情绪，看看小人会告诉你什么</p>
+    </div>
+    <div class="tools">
+      <a class="back-to-lobby" href="../../index.html" aria-label="返回游戏大厅">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 12H5"></path>
+          <path d="m11 6-6 6 6 6"></path>
+        </svg>
+        <span>大厅</span>
+      </a>
+      <div class="stars" aria-label="已经认识的情绪">
+        <span class="star" data-emotion="happy" title="开心">😊</span>
+        <span class="star" data-emotion="sad" title="伤心">😢</span>
+        <span class="star" data-emotion="angry" title="生气">😠</span>
+        <span class="star" data-emotion="scared" title="害怕">😨</span>
+        <span class="star" data-emotion="surprised" title="惊讶">😲</span>
+      </div>
+      <button class="ghost" id="resetBtn" type="button">重新开始</button>
+    </div>
+  </header>
+
+  <main class="sky" id="sky">
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+
+    <div class="slot" data-pos="happy" style="left:15%;top:18%;animation-delay:-.4s">
+      <button class="emotion" type="button" data-emotion="happy" aria-label="开心">
+        <span class="face" aria-hidden="true">😊</span>
+        <span class="name">开心</span>
+      </button>
+    </div>
+
+    <div class="slot" data-pos="sad" style="left:47%;top:9%;animation-delay:-2.1s">
+      <button class="emotion" type="button" data-emotion="sad" aria-label="伤心">
+        <span class="face" aria-hidden="true">😢</span>
+        <span class="name">伤心</span>
+      </button>
+    </div>
+
+    <div class="slot" data-pos="angry" style="left:24%;top:53%;animation-delay:-3.2s">
+      <button class="emotion" type="button" data-emotion="angry" aria-label="生气">
+        <span class="face" aria-hidden="true">😠</span>
+        <span class="name">生气</span>
+      </button>
+    </div>
+
+    <div class="slot" data-pos="scared" style="left:81%;top:24%;animation-delay:-1.2s">
+      <button class="emotion" type="button" data-emotion="scared" aria-label="害怕">
+        <span class="face" aria-hidden="true">😨</span>
+        <span class="name">害怕</span>
+      </button>
+    </div>
+
+    <div class="slot" data-pos="surprised" style="left:73%;top:56%;animation-delay:-2.8s">
+      <button class="emotion" type="button" data-emotion="surprised" aria-label="惊讶">
+        <span class="face" aria-hidden="true">😲</span>
+        <span class="name">惊讶</span>
+      </button>
+    </div>
+  </main>
+
+  <section class="ground">
+    <div class="shadow" aria-hidden="true"></div>
+
+    <div class="person" id="person">
+      <div class="halo" aria-hidden="true"></div>
+      <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
+      <div class="surprise-mark" id="surpriseMark" aria-hidden="true">！</div>
+
+      <svg viewBox="0 0 220 262" role="img" aria-label="情绪小管家小人">
+        <!-- 腿 -->
+        <rect x="86" y="196" width="20" height="50" rx="10" fill="#5f7fb8"/>
+        <rect x="114" y="196" width="20" height="50" rx="10" fill="#5f7fb8"/>
+        <ellipse cx="94" cy="250" rx="17" ry="8" fill="#4a639a"/>
+        <ellipse cx="126" cy="250" rx="17" ry="8" fill="#4a639a"/>
+        <!-- 手臂 -->
+        <path d="M74 152 C 54 162, 46 180, 44 196" fill="none" stroke="#7fc8e8" stroke-width="16" stroke-linecap="round"/>
+        <path d="M146 152 C 166 162, 174 180, 176 196" fill="none" stroke="#7fc8e8" stroke-width="16" stroke-linecap="round"/>
+        <circle cx="44" cy="198" r="10" fill="#ffe0c7"/>
+        <circle cx="176" cy="198" r="10" fill="#ffe0c7"/>
+        <!-- 身体 -->
+        <rect x="62" y="130" width="96" height="78" rx="34" fill="#7fc8e8"/>
+        <circle cx="110" cy="168" r="13" fill="#ffffff" opacity=".5"/>
+        <!-- 脖子 -->
+        <rect x="98" y="116" width="24" height="20" rx="10" fill="#f2c6a9"/>
+        <!-- 耳朵 -->
+        <circle cx="62" cy="94" r="10" fill="#ffe0c7"/>
+        <circle cx="158" cy="94" r="10" fill="#ffe0c7"/>
+        <!-- 头 -->
+        <circle cx="110" cy="88" r="48" fill="#ffe0c7"/>
+        <!-- 头发 -->
+        <path d="M62 84 a48 48 0 0 1 96 0 c-9-22-25-33-48-33 s-39 11-48 33 z" fill="#453a44"/>
+        <path d="M104 42 q14-12 24-2" fill="none" stroke="#453a44" stroke-width="7" stroke-linecap="round"/>
+
+        <!-- 表情：平静 -->
+        <g class="face face-idle">
+          <circle cx="91" cy="92" r="6" fill="#3b3448"/>
+          <circle cx="129" cy="92" r="6" fill="#3b3448"/>
+          <circle cx="93" cy="90" r="2" fill="#fff" opacity=".9"/>
+          <circle cx="131" cy="90" r="2" fill="#fff" opacity=".9"/>
+          <path d="M100 110 q10 8 20 0" fill="none" stroke="#3b3448" stroke-width="4" stroke-linecap="round"/>
+        </g>
+
+        <!-- 表情：开心 -->
+        <g class="face face-happy">
+          <path d="M82 94 q9 -13 18 0" fill="none" stroke="#3b3448" stroke-width="5" stroke-linecap="round"/>
+          <path d="M120 94 q9 -13 18 0" fill="none" stroke="#3b3448" stroke-width="5" stroke-linecap="round"/>
+          <path d="M94 106 q16 19 32 0 z" fill="#d95a5a"/>
+          <ellipse cx="74" cy="108" rx="9" ry="5" fill="#ffb0b0" opacity=".7"/>
+          <ellipse cx="146" cy="108" rx="9" ry="5" fill="#ffb0b0" opacity=".7"/>
+        </g>
+
+        <!-- 表情：伤心 -->
+        <g class="face face-sad">
+          <path d="M79 85 Q90 81 101 75" fill="none" stroke="#3b3448" stroke-width="4" stroke-linecap="round"/>
+          <path d="M141 85 Q130 81 119 75" fill="none" stroke="#3b3448" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="91" cy="95" r="5.5" fill="#3b3448"/>
+          <circle cx="129" cy="95" r="5.5" fill="#3b3448"/>
+          <ellipse cx="80" cy="108" rx="4" ry="6.5" fill="#9ed6f7"/>
+          <path d="M99 121 q11 -11 22 0" fill="none" stroke="#3b3448" stroke-width="4.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- 表情：生气 -->
+        <g class="face face-angry">
+          <path d="M80 76 l18 8" fill="none" stroke="#3b3448" stroke-width="5" stroke-linecap="round"/>
+          <path d="M140 76 l-18 8" fill="none" stroke="#3b3448" stroke-width="5" stroke-linecap="round"/>
+          <ellipse cx="91" cy="94" rx="6" ry="5" fill="#3b3448"/>
+          <ellipse cx="129" cy="94" rx="6" ry="5" fill="#3b3448"/>
+          <path d="M98 118 q12 -9 24 0" fill="none" stroke="#3b3448" stroke-width="5" stroke-linecap="round"/>
+          <path d="M152 60 l7 -9 M160 66 l10 -7" stroke="#ff9a8a" stroke-width="4" stroke-linecap="round" fill="none"/>
+        </g>
+
+        <!-- 表情：害怕 -->
+        <g class="face face-scared">
+          <path d="M79 74 q11 -9 22 -2" fill="none" stroke="#3b3448" stroke-width="4" stroke-linecap="round"/>
+          <path d="M141 74 q-11 -9 -22 -2" fill="none" stroke="#3b3448" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="91" cy="93" r="9" fill="#fff" stroke="#3b3448" stroke-width="2"/>
+          <circle cx="129" cy="93" r="9" fill="#fff" stroke="#3b3448" stroke-width="2"/>
+          <circle cx="91" cy="95" r="3.5" fill="#3b3448"/>
+          <circle cx="129" cy="95" r="3.5" fill="#3b3448"/>
+          <ellipse cx="110" cy="116" rx="7" ry="9" fill="#8a5a5a"/>
+        </g>
+
+        <!-- 表情：惊讶 -->
+        <g class="face face-surprised">
+          <path d="M80 66 q11 -9 21 -3" fill="none" stroke="#3b3448" stroke-width="3.6" stroke-linecap="round"/>
+          <path d="M140 66 q-11 -9 -21 -3" fill="none" stroke="#3b3448" stroke-width="3.6" stroke-linecap="round"/>
+          <circle cx="91" cy="93" r="10" fill="#fff" stroke="#3b3448" stroke-width="2"/>
+          <circle cx="129" cy="93" r="10" fill="#fff" stroke="#3b3448" stroke-width="2"/>
+          <circle cx="91" cy="93" r="4" fill="#3b3448"/>
+          <circle cx="129" cy="93" r="4" fill="#3b3448"/>
+          <ellipse cx="110" cy="117" rx="10" ry="12" fill="#8a5a5a"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,441 @@
+:root{
+  --ink:#3d3a52;
+  --muted:#7b7691;
+  --line:#e7e2f4;
+  --happy:#ffd86b;
+  --sad:#a9c9f5;
+  --angry:#ffb0a0;
+  --scared:#c9b8f7;
+  --surprised:#9fe3d0;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; overflow-x:hidden; }
+body{
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 12% 4%, #fff4d9 0%, transparent 40%),
+    radial-gradient(circle at 88% 2%, #ffe4ef 0%, transparent 44%),
+    linear-gradient(180deg,#eaf7ff 0%, #f2f0ff 52%, #fff8ee 100%);
+  background-attachment:fixed;
+  -webkit-tap-highlight-color:transparent;
+  overflow:hidden;
+}
+button{ font-family:inherit; }
+
+.game{
+  position:relative;
+  min-height:100vh;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  padding:clamp(12px,2.2vw,26px);
+  gap:6px;
+}
+
+/* ---------- 顶部 ---------- */
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+  position:relative;
+  z-index:20;
+}
+.title-wrap{ display:flex; flex-direction:column; gap:2px; }
+h1{
+  margin:0;
+  font-size:clamp(19px,2.5vw,27px);
+  letter-spacing:.06em;
+}
+h1 .dot{ color:#8f7bea; }
+.subtitle{
+  margin:0;
+  font-size:clamp(11px,1.45vw,14px);
+  color:var(--muted);
+}
+.tools{ display:flex; align-items:center; gap:10px; }
+.stars{
+  display:flex;
+  gap:4px;
+  padding:5px 10px;
+  background:rgba(255,255,255,.62);
+  border:1px solid rgba(255,255,255,.9);
+  border-radius:999px;
+  box-shadow:0 6px 16px rgba(96,84,150,.08);
+}
+.star{
+  font-size:clamp(14px,1.8vw,19px);
+  filter:grayscale(1);
+  opacity:.32;
+  transform:scale(.88);
+  transition:filter .35s, opacity .35s, transform .35s;
+}
+.star.on{ filter:none; opacity:1; transform:scale(1.08); }
+.ghost{
+  border:0;
+  border-radius:999px;
+  padding:8px 14px;
+  font-size:clamp(11px,1.3vw,13px);
+  font-weight:700;
+  color:#6d67a0;
+  background:rgba(255,255,255,.7);
+  box-shadow:inset 0 0 0 1.5px var(--line);
+  cursor:pointer;
+  transition:transform .15s, background .2s;
+}
+.ghost:hover{ background:#fff; transform:translateY(-1px); }
+.ghost:active{ transform:translateY(0) scale(.97); }
+
+/* ---------- 返回游戏大厅（仓库统一约定） ---------- */
+.back-to-lobby{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  height:34px;
+  padding:0 12px 0 9px;
+  border-radius:999px;
+  background:rgba(255,255,255,.7);
+  box-shadow:inset 0 0 0 1.5px var(--line);
+  color:#6d67a0;
+  font-size:clamp(11px,1.3vw,13px);
+  font-weight:700;
+  text-decoration:none;
+  transition:transform .15s, background .2s;
+}
+.back-to-lobby:hover{ background:#fff; transform:translateY(-1px); }
+.back-to-lobby:active{ transform:translateY(0) scale(.97); }
+.back-to-lobby:focus-visible{ outline:3px solid #8f7bea; outline-offset:3px; }
+.back-to-lobby svg{
+  width:15px;
+  height:15px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+/* ---------- 情绪天空 ---------- */
+.sky{
+  position:relative;
+  flex:1 1 auto;
+  min-height:230px;
+  z-index:5;
+}
+.cloud{
+  position:absolute;
+  border-radius:999px;
+  background:rgba(255,255,255,.6);
+  filter:blur(2px);
+  pointer-events:none;
+  animation:cloudDrift 26s ease-in-out infinite alternate;
+}
+.cloud.c1{ width:130px; height:34px; left:6%; top:8%; }
+.cloud.c2{ width:90px; height:26px; right:12%; top:26%; animation-duration:34s; opacity:.7; }
+.cloud.c3{ width:70px; height:22px; left:46%; bottom:6%; animation-duration:30s; opacity:.55; }
+@keyframes cloudDrift{
+  from{ transform:translateX(-14px); }
+  to{ transform:translateX(18px); }
+}
+
+.slot{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  animation:floaty 5.6s ease-in-out infinite;
+  z-index:6;
+}
+@keyframes floaty{
+  0%,100%{ transform:translate(-50%,-50%); }
+  50%{ transform:translate(-50%,calc(-50% - 12px)); }
+}
+.emotion{
+  --c:var(--happy);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  width:clamp(66px,9vw,98px);
+  height:clamp(66px,9vw,98px);
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:rgba(255,255,255,.82);
+  box-shadow:
+    0 12px 24px rgba(96,84,150,.14),
+    inset 0 0 0 2px rgba(255,255,255,.95),
+    0 0 0 4px color-mix(in srgb, var(--c) 45%, transparent);
+  cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  .emotion{ box-shadow:0 12px 24px rgba(96,84,150,.14), inset 0 0 0 2px rgba(255,255,255,.95); }
+}
+.emotion[data-emotion="happy"]{ --c:var(--happy); }
+.emotion[data-emotion="sad"]{ --c:var(--sad); }
+.emotion[data-emotion="angry"]{ --c:var(--angry); }
+.emotion[data-emotion="scared"]{ --c:var(--scared); }
+.emotion[data-emotion="surprised"]{ --c:var(--surprised); }
+
+.emotion:hover{
+  transform:scale(1.09);
+  box-shadow:
+    0 16px 30px rgba(96,84,150,.2),
+    inset 0 0 0 2px #fff,
+    0 0 0 5px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.emotion:active{ transform:scale(.95); }
+.emotion:focus-visible{
+  outline:3px solid #8f7bea;
+  outline-offset:4px;
+}
+.emotion .face{
+  font-size:clamp(27px,4.1vw,40px);
+  line-height:1;
+  filter:drop-shadow(0 3px 4px rgba(96,84,150,.14));
+}
+.emotion .name{
+  font-size:clamp(11px,1.4vw,14px);
+  font-weight:800;
+  letter-spacing:.08em;
+  color:#5a547a;
+}
+.emotion.picked{ animation:picked .55s ease; }
+@keyframes picked{
+  0%{ transform:scale(1); }
+  40%{ transform:scale(1.16) rotate(-3deg); }
+  70%{ transform:scale(.98) rotate(2deg); }
+  100%{ transform:scale(1); }
+}
+
+/* ---------- 地面与小主角 ---------- */
+.ground{
+  position:relative;
+  height:clamp(200px,29vh,296px);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding-bottom:2px;
+  z-index:8;
+}
+.ground::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:min(720px,96vw);
+  height:70%;
+  transform:translateX(-50%);
+  background:radial-gradient(60% 100% at 50% 100%, #dcefd2 0%, #ecf7e6 55%, rgba(236,247,230,0) 78%);
+  border-radius:50% 50% 0 0 / 80% 80% 0 0;
+  pointer-events:none;
+}
+.shadow{
+  position:absolute;
+  left:50%;
+  bottom:4px;
+  width:clamp(96px,15vw,140px);
+  height:14px;
+  transform:translateX(-50%);
+  background:radial-gradient(closest-side, rgba(90,80,130,.22), rgba(90,80,130,0));
+  pointer-events:none;
+}
+
+.person{
+  position:relative;
+  width:clamp(148px,21vw,208px);
+  transform-origin:50% 100%;
+  z-index:9;
+}
+.person:not([class*="act-"]){ animation:idleSway 5.2s ease-in-out infinite; }
+@keyframes idleSway{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-5px); }
+}
+.person svg{ display:block; width:100%; height:auto; overflow:visible; }
+
+.bubble{
+  position:absolute;
+  left:50%;
+  bottom:calc(100% - 14px);
+  transform:translate(-50%,10px) scale(.9);
+  padding:10px 18px;
+  max-width:78vw;
+  border-radius:18px;
+  border:2px solid var(--line);
+  background:#fff;
+  box-shadow:0 14px 30px rgba(90,80,140,.18);
+  color:#4a4566;
+  font-size:clamp(13px,1.85vw,19px);
+  font-weight:800;
+  letter-spacing:.02em;
+  text-align:center;
+  white-space:nowrap;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease, transform .2s cubic-bezier(.2,1.4,.5,1);
+  z-index:12;
+}
+.bubble::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-9px;
+  width:14px;
+  height:14px;
+  background:#fff;
+  border-right:2px solid var(--line);
+  border-bottom:2px solid var(--line);
+  transform:translateX(-50%) rotate(45deg);
+  border-bottom-right-radius:3px;
+}
+.bubble.show{ opacity:1; transform:translate(-50%,0) scale(1); }
+
+.surprise-mark{
+  position:absolute;
+  left:64%;
+  top:-2%;
+  font-size:clamp(30px,4.4vw,44px);
+  font-weight:900;
+  color:#ffb545;
+  text-shadow:0 3px 0 #fff, 0 0 22px rgba(255,181,69,.55);
+  opacity:0;
+  pointer-events:none;
+  z-index:13;
+}
+.surprise-mark.pop{ animation:markPop 1.5s ease-out forwards; }
+@keyframes markPop{
+  0%{ opacity:0; transform:translate(-50%,12px) scale(.4) rotate(-8deg); }
+  22%{ opacity:1; transform:translate(-50%,-6px) scale(1.18) rotate(4deg); }
+  55%{ opacity:1; transform:translate(-50%,-12px) scale(1) rotate(0deg); }
+  100%{ opacity:0; transform:translate(-50%,-38px) scale(.9); }
+}
+
+.halo{
+  position:absolute;
+  inset:2% 6% 8%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(160,210,255,.5), rgba(160,210,255,0) 70%);
+  opacity:0;
+  pointer-events:none;
+  z-index:-1;
+}
+.person.mood-sad .halo{ animation:halo 3.4s ease-in-out 1; }
+.person.mood-scared .halo{
+  background:radial-gradient(circle, rgba(255,214,130,.55), rgba(255,214,130,0) 70%);
+  animation:halo 2.6s ease-out .7s 1;
+}
+@keyframes halo{
+  0%{ opacity:0; transform:scale(.65); }
+  40%{ opacity:1; transform:scale(1.05); }
+  100%{ opacity:0; transform:scale(1.45); }
+}
+
+/* 表情切换（只作用于小人 SVG 内的表情，不影响按钮里的 emoji） */
+.person .face{ opacity:0; transition:opacity .18s ease; }
+.person .face-idle{ opacity:1; }
+.person[class*="mood-"] .face-idle{ opacity:0; }
+.person.mood-happy .face-happy,
+.person.mood-sad .face-sad,
+.person.mood-angry .face-angry,
+.person.mood-scared .face-scared,
+.person.mood-surprised .face-surprised{ opacity:1; }
+
+/* 动作 */
+.person.act-happy{ animation:happyBounce 1.15s ease-in-out 2; }
+@keyframes happyBounce{
+  0%,100%{ transform:translateY(0) scale(1); }
+  32%{ transform:translateY(-20px) scale(1.03); }
+  58%{ transform:translateY(0) scale(.97); }
+}
+.person.act-sad{ animation:breathe 3.2s ease-in-out 1; }
+@keyframes breathe{
+  0%,100%{ transform:scale(1); }
+  45%{ transform:scale(1.07); }
+  72%{ transform:scale(1.02); }
+}
+.person.act-angry{ animation:hop .46s ease-in-out 6; }
+@keyframes hop{
+  0%,100%{ transform:translateY(0); }
+  45%{ transform:translateY(-26px); }
+}
+.person.act-scared{ animation:shiver .12s linear 10, settle .9s ease-out 1.2s 1; }
+@keyframes shiver{
+  0%,100%{ transform:translateX(0); }
+  25%{ transform:translateX(-4px); }
+  75%{ transform:translateX(4px); }
+}
+@keyframes settle{ from{ transform:scale(1.03); } to{ transform:scale(1); } }
+.person.act-surprised{ animation:startle 1.6s ease-out 1; }
+@keyframes startle{
+  0%{ transform:translateY(0) rotate(0); }
+  22%{ transform:translateY(-16px) rotate(-2deg) scale(1.04); }
+  45%{ transform:translateY(-8px) rotate(2deg); }
+  100%{ transform:translateY(0) rotate(0) scale(1); }
+}
+
+.spark{
+  position:absolute;
+  bottom:66%;
+  font-size:16px;
+  pointer-events:none;
+  animation:floatUp 1.5s ease-out forwards;
+  z-index:2;
+}
+.spark.from-left{ left:0; }
+.spark.from-right{ right:0; }
+@keyframes floatUp{
+  0%{ opacity:0; transform:translateY(0) scale(.6); }
+  25%{ opacity:1; }
+  100%{ opacity:0; transform:translateY(-80px) scale(1.1); }
+}
+
+@media (max-width:640px){
+  body{ overflow-y:auto; }
+  .game{ padding:14px 12px; }
+  .topbar{ flex-direction:column; align-items:flex-start; gap:8px; }
+  .tools{ width:100%; justify-content:space-between; }
+  .stars{ padding:4px 8px; gap:2px; }
+  .star{ font-size:15px; }
+
+  /* 小屏改为六列网格（每个情绪占两列），避免情绪气泡超出画面 */
+  .sky{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    align-content:center;
+    justify-items:center;
+    column-gap:4px;
+    row-gap:14px;
+    padding:12px 0 18px;
+    min-height:0;
+  }
+  .slot{
+    position:static;
+    transform:none;
+    grid-column:span 2;
+    animation:floatyY 5.6s ease-in-out infinite;
+  }
+  .slot[data-pos="scared"]{ grid-column:2 / span 2; }
+  .slot[data-pos="surprised"]{ grid-column:4 / span 2; }
+  .cloud{ display:none; }
+  .emotion{ width:clamp(62px,20vw,84px); height:clamp(62px,20vw,84px); }
+  .emotion .face{ font-size:clamp(25px,7.6vw,33px); }
+  .emotion .name{ font-size:12px; }
+  .bubble{ padding:9px 14px; }
+  .ground{ height:clamp(180px,32vh,240px); }
+  .cloud{ display:none; }
+}
+@keyframes floatyY{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-10px); }
+}
+@media (max-height:640px){
+  .ground{ height:190px; }
+  .sky{ min-height:200px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .slot,.cloud{ animation:none; }
+  .person{ animation-duration:.001s !important; }
+}
